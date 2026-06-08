@@ -47,5 +47,7 @@ function wcd_activate_plugin() {
 	if ( false === get_option( 'wcd_cache_duration' ) ) {
 		add_option( 'wcd_cache_duration', 30 );
 	}
+
+	set_transient( 'wcd_activation_notice', 1, MINUTE_IN_SECONDS );
 }
 register_activation_hook( __FILE__, 'wcd_activate_plugin' );

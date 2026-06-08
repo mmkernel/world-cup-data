@@ -31,20 +31,46 @@ class WCD_Admin {
 
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_notices', array( $this, 'render_activation_notice' ) );
 		add_action( 'admin_post_wcd_clear_cache', array( $this, 'handle_clear_cache' ) );
 	}
 
 	/**
-	 * Adds the settings page under Settings.
+	 * Adds a top-level admin menu item for the plugin.
 	 */
 	public function add_settings_page() {
-		add_options_page(
+		add_menu_page(
 			__( 'World Cup Data', 'world-cup-data' ),
 			__( 'World Cup Data', 'world-cup-data' ),
 			'manage_options',
 			'world-cup-data',
-			array( $this, 'render_settings_page' )
+			array( $this, 'render_settings_page' ),
+			'dashicons-calendar-alt',
+			58
 		);
+	}
+
+	/**
+	 * Shows a one-time notice after plugin activation.
+	 */
+	public function render_activation_notice() {
+		if ( ! current_user_can( 'manage_options' ) || ! get_transient( 'wcd_activation_notice' ) ) {
+			return;
+		}
+
+		delete_transient( 'wcd_activation_notice' );
+
+		$settings_url = admin_url( 'admin.php?page=world-cup-data' );
+		$message      = sprintf(
+			/* translators: %s: Settings page link. */
+			__( 'Enter your football-data.org API v4 token on the %s page.', 'world-cup-data' ),
+			'<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'World Cup Data settings', 'world-cup-data' ) . '</a>'
+		);
+		?>
+		<div class="notice notice-info is-dismissible">
+			<p><?php echo wp_kses_post( $message ); ?></p>
+		</div>
+		<?php
 	}
 
 	/**
@@ -179,6 +205,37 @@ class WCD_Admin {
 
 			<hr />
 
+			<h2><?php echo esc_html__( 'Shortcodes', 'world-cup-data' ); ?></h2>
+			<p><?php echo esc_html__( 'Use these shortcodes in posts, pages, or widget areas.', 'world-cup-data' ); ?></p>
+			<table class="widefat striped" style="max-width: 900px;">
+				<thead>
+					<tr>
+						<th><?php echo esc_html__( 'Shortcode', 'world-cup-data' ); ?></th>
+						<th><?php echo esc_html__( 'Description', 'world-cup-data' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>[worldcup_matches]</code></td>
+						<td><?php echo esc_html__( 'Shows upcoming, live, and finished World Cup matches grouped by date.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
+						<td><code>[worldcup_matches status="SCHEDULED" limit="20"]</code></td>
+						<td><?php echo esc_html__( 'Filters matches by status. Supported statuses: SCHEDULED, FINISHED, LIVE, all.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
+						<td><code>[worldcup_results]</code></td>
+						<td><?php echo esc_html__( 'Shows finished matches only, including final scores.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
+						<td><code>[worldcup_standings]</code></td>
+						<td><?php echo esc_html__( 'Shows World Cup group standings when available from the API.', 'world-cup-data' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<hr />
+
 			<h2><?php echo esc_html__( 'Cached API Data', 'world-cup-data' ); ?></h2>
 			<p><?php echo esc_html__( 'Clear cached matches and standings if you need to fetch fresh data before the cache expires.', 'world-cup-data' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -208,7 +265,7 @@ class WCD_Admin {
 					'page'              => 'world-cup-data',
 					'wcd_cache_cleared' => 1,
 				),
-				admin_url( 'options-general.php' )
+				admin_url( 'admin.php' )
 			)
 		);
 		exit;
