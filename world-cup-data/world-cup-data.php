@@ -4,7 +4,7 @@
  * Plugin URI: https://MasteryMesh.com
  * Description: Displays FIFA World Cup fixtures, results, and standings from football-data.org API v4.
  * Version: 1.0.0
- * Author: Momcilo Milic
+ * Author: Momcilo Milic - MasteryMesh.com
  * Author URI: https://MasteryMesh.com
  * Text Domain: world-cup-data
  *
@@ -46,6 +46,14 @@ add_action( 'plugins_loaded', 'wcd_init_plugin' );
 function wcd_activate_plugin() {
 	if ( false === get_option( 'wcd_cache_duration' ) ) {
 		add_option( 'wcd_cache_duration', 30 );
+	}
+
+	if ( false === get_option( 'wcd_timezone' ) ) {
+		add_option( 'wcd_timezone', wp_timezone_string() );
+	}
+
+	if ( false === get_option( 'wcd_language' ) ) {
+		add_option( 'wcd_language', 'en' );
 	}
 
 	set_transient( 'wcd_activation_notice', 1, MINUTE_IN_SECONDS );

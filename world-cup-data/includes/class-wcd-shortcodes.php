@@ -92,7 +92,7 @@ class WCD_Shortcodes {
 		}
 
 		if ( empty( $data['standings'] ) || ! is_array( $data['standings'] ) ) {
-			return $this->render_notice( __( 'No World Cup standings are available yet.', 'world-cup-data' ) );
+			return $this->render_notice( $this->get_text( 'no_standings' ) );
 		}
 
 		ob_start();
@@ -104,7 +104,7 @@ class WCD_Shortcodes {
 					continue;
 				}
 
-				$group_title = ! empty( $standing['group'] ) ? $standing['group'] : ( $standing['stage'] ?? __( 'Standings', 'world-cup-data' ) );
+				$group_title = ! empty( $standing['group'] ) ? $standing['group'] : ( $standing['stage'] ?? $this->get_text( 'standings' ) );
 				?>
 				<section class="wcd-standings-group">
 					<h3 class="wcd-group-title"><?php echo esc_html( $group_title ); ?></h3>
@@ -112,16 +112,16 @@ class WCD_Shortcodes {
 						<table class="wcd-table wcd-standings-table">
 							<thead>
 								<tr>
-									<th><?php echo esc_html__( 'Pos', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'Team', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'P', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'W', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'D', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'L', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'GF', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'GA', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'GD', 'world-cup-data' ); ?></th>
-									<th><?php echo esc_html__( 'Pts', 'world-cup-data' ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'position_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'team' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'played_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'won_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'draw_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'lost_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'goals_for_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'goals_against_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'goal_difference_short' ) ); ?></th>
+									<th><?php echo esc_html( $this->get_text( 'points_short' ) ); ?></th>
 								</tr>
 							</thead>
 							<tbody>
@@ -181,7 +181,7 @@ class WCD_Shortcodes {
 		$matches = $this->filter_matches( $data['matches'] ?? array(), $status, $limit );
 
 		if ( empty( $matches ) ) {
-			return $this->render_notice( __( 'No World Cup matches found for this view.', 'world-cup-data' ) );
+			return $this->render_notice( $this->get_text( 'no_matches' ) );
 		}
 
 		$grouped = $this->group_matches_by_date( $matches );
@@ -243,7 +243,7 @@ class WCD_Shortcodes {
 
 		foreach ( $matches as $match ) {
 			$timestamp = $this->get_match_timestamp( $match );
-			$date_key  = $timestamp ? wp_date( 'F j, Y', $timestamp ) : __( 'Date TBA', 'world-cup-data' );
+			$date_key  = $timestamp ? wp_date( 'F j, Y', $timestamp, $this->get_display_timezone() ) : $this->get_text( 'date_tba' );
 
 			if ( ! isset( $grouped[ $date_key ] ) ) {
 				$grouped[ $date_key ] = array();
@@ -262,10 +262,10 @@ class WCD_Shortcodes {
 	 */
 	private function render_match_card( $match ) {
 		$timestamp = $this->get_match_timestamp( $match );
-		$time      = $timestamp ? wp_date( get_option( 'time_format' ), $timestamp ) : __( 'TBA', 'world-cup-data' );
+		$time      = $timestamp ? wp_date( get_option( 'time_format' ), $timestamp, $this->get_display_timezone() ) : $this->get_text( 'tba' );
 		$status    = $match['status'] ?? '';
-		$home_team = $match['homeTeam']['name'] ?? __( 'Home Team', 'world-cup-data' );
-		$away_team = $match['awayTeam']['name'] ?? __( 'Away Team', 'world-cup-data' );
+		$home_team = $match['homeTeam']['name'] ?? $this->get_text( 'home_team' );
+		$away_team = $match['awayTeam']['name'] ?? $this->get_text( 'away_team' );
 		$score     = $this->format_score( $match );
 		?>
 		<article class="wcd-match-card">
@@ -318,6 +318,134 @@ class WCD_Shortcodes {
 		$timestamp = strtotime( $match['utcDate'] );
 
 		return false === $timestamp ? null : $timestamp;
+	}
+
+	/**
+	 * Returns the configured display timezone.
+	 *
+	 * @return DateTimeZone
+	 */
+	private function get_display_timezone() {
+		$timezone = (string) get_option( 'wcd_timezone', wp_timezone_string() );
+
+		try {
+			return new DateTimeZone( $timezone );
+		} catch ( Exception $exception ) {
+			return wp_timezone();
+		}
+	}
+
+	/**
+	 * Returns frontend text for the selected plugin language.
+	 *
+	 * @param string $key Text key.
+	 * @return string
+	 */
+	private function get_text( $key ) {
+		$language     = (string) get_option( 'wcd_language', 'en' );
+		$translations = array(
+			'en' => array(
+				'no_matches'             => 'No World Cup matches found for this view.',
+				'no_standings'           => 'No World Cup standings are available yet.',
+				'standings'              => 'Standings',
+				'position_short'         => 'Pos',
+				'team'                   => 'Team',
+				'played_short'           => 'P',
+				'won_short'              => 'W',
+				'draw_short'             => 'D',
+				'lost_short'             => 'L',
+				'goals_for_short'        => 'GF',
+				'goals_against_short'    => 'GA',
+				'goal_difference_short'  => 'GD',
+				'points_short'           => 'Pts',
+				'date_tba'               => 'Date TBA',
+				'tba'                    => 'TBA',
+				'home_team'              => 'Home Team',
+				'away_team'              => 'Away Team',
+			),
+			'de' => array(
+				'no_matches'             => 'Keine WM-Spiele fuer diese Ansicht gefunden.',
+				'no_standings'           => 'Noch keine WM-Tabelle verfuegbar.',
+				'standings'              => 'Tabelle',
+				'position_short'         => 'Pos',
+				'team'                   => 'Team',
+				'played_short'           => 'Sp',
+				'won_short'              => 'S',
+				'draw_short'             => 'U',
+				'lost_short'             => 'N',
+				'goals_for_short'        => 'T+',
+				'goals_against_short'    => 'T-',
+				'goal_difference_short'  => 'TD',
+				'points_short'           => 'Pkt',
+				'date_tba'               => 'Datum offen',
+				'tba'                    => 'Offen',
+				'home_team'              => 'Heimteam',
+				'away_team'              => 'Auswaertsteam',
+			),
+			'fr' => array(
+				'no_matches'             => 'Aucun match de Coupe du monde trouve pour cette vue.',
+				'no_standings'           => 'Aucun classement de Coupe du monde disponible pour le moment.',
+				'standings'              => 'Classement',
+				'position_short'         => 'Pos',
+				'team'                   => 'Equipe',
+				'played_short'           => 'J',
+				'won_short'              => 'G',
+				'draw_short'             => 'N',
+				'lost_short'             => 'P',
+				'goals_for_short'        => 'BP',
+				'goals_against_short'    => 'BC',
+				'goal_difference_short'  => 'Diff',
+				'points_short'           => 'Pts',
+				'date_tba'               => 'Date a confirmer',
+				'tba'                    => 'A confirmer',
+				'home_team'              => 'Equipe domicile',
+				'away_team'              => 'Equipe exterieure',
+			),
+			'es' => array(
+				'no_matches'             => 'No se encontraron partidos del Mundial para esta vista.',
+				'no_standings'           => 'Todavia no hay clasificacion del Mundial disponible.',
+				'standings'              => 'Clasificacion',
+				'position_short'         => 'Pos',
+				'team'                   => 'Equipo',
+				'played_short'           => 'J',
+				'won_short'              => 'G',
+				'draw_short'             => 'E',
+				'lost_short'             => 'P',
+				'goals_for_short'        => 'GF',
+				'goals_against_short'    => 'GC',
+				'goal_difference_short'  => 'DG',
+				'points_short'           => 'Pts',
+				'date_tba'               => 'Fecha por confirmar',
+				'tba'                    => 'Por confirmar',
+				'home_team'              => 'Equipo local',
+				'away_team'              => 'Equipo visitante',
+			),
+			'hr' => array(
+				'no_matches'             => 'Nisu pronadjene utakmice Svjetskog prvenstva za ovaj prikaz.',
+				'no_standings'           => 'Poredak Svjetskog prvenstva jos nije dostupan.',
+				'standings'              => 'Poredak',
+				'position_short'         => 'Poz',
+				'team'                   => 'Momcad',
+				'played_short'           => 'O',
+				'won_short'              => 'P',
+				'draw_short'             => 'N',
+				'lost_short'             => 'I',
+				'goals_for_short'        => 'G+',
+				'goals_against_short'    => 'G-',
+				'goal_difference_short'  => 'GR',
+				'points_short'           => 'Bod',
+				'date_tba'               => 'Datum nije odredjen',
+				'tba'                    => 'Nije odredjeno',
+				'home_team'              => 'Domaca momcad',
+				'away_team'              => 'Gostujuca momcad',
+			),
+		);
+
+		if ( ! isset( $translations[ $language ] ) ) {
+			$language = 'en';
+		}
+
+		return $translations[ $language ][ $key ] ?? $translations['en'][ $key ] ?? '';
 	}
 
 	/**

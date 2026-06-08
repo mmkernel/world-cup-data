@@ -97,6 +97,26 @@ class WCD_Admin {
 			)
 		);
 
+		register_setting(
+			'wcd_settings',
+			'wcd_timezone',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_timezone' ),
+				'default'           => wp_timezone_string(),
+			)
+		);
+
+		register_setting(
+			'wcd_settings',
+			'wcd_language',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_language' ),
+				'default'           => 'en',
+			)
+		);
+
 		add_settings_section(
 			'wcd_api_section',
 			__( 'API Settings', 'world-cup-data' ),
@@ -108,6 +128,22 @@ class WCD_Admin {
 			'wcd_api_token',
 			__( 'API Token', 'world-cup-data' ),
 			array( $this, 'render_api_token_field' ),
+			'world-cup-data',
+			'wcd_api_section'
+		);
+
+		add_settings_field(
+			'wcd_timezone',
+			__( 'Timezone', 'world-cup-data' ),
+			array( $this, 'render_timezone_field' ),
+			'world-cup-data',
+			'wcd_api_section'
+		);
+
+		add_settings_field(
+			'wcd_language',
+			__( 'Language', 'world-cup-data' ),
+			array( $this, 'render_language_field' ),
 			'world-cup-data',
 			'wcd_api_section'
 		);
@@ -144,6 +180,32 @@ class WCD_Admin {
 	}
 
 	/**
+	 * Sanitizes selected timezone.
+	 *
+	 * @param string $value Raw timezone.
+	 * @return string
+	 */
+	public function sanitize_timezone( $value ) {
+		$value     = sanitize_text_field( wp_unslash( $value ) );
+		$timezones = timezone_identifiers_list();
+
+		return in_array( $value, $timezones, true ) ? $value : wp_timezone_string();
+	}
+
+	/**
+	 * Sanitizes selected language.
+	 *
+	 * @param string $value Raw language code.
+	 * @return string
+	 */
+	public function sanitize_language( $value ) {
+		$value             = sanitize_key( wp_unslash( $value ) );
+		$allowed_languages = array_keys( $this->get_language_options() );
+
+		return in_array( $value, $allowed_languages, true ) ? $value : 'en';
+	}
+
+	/**
 	 * Renders settings section text.
 	 */
 	public function render_section_description() {
@@ -173,6 +235,57 @@ class WCD_Admin {
 			'<input type="number" min="1" step="1" id="wcd_cache_duration" name="wcd_cache_duration" value="%d" /> <span>%s</span>',
 			$value,
 			esc_html__( 'minutes', 'world-cup-data' )
+		);
+	}
+
+	/**
+	 * Renders timezone dropdown.
+	 */
+	public function render_timezone_field() {
+		$current_timezone = (string) get_option( 'wcd_timezone', wp_timezone_string() );
+		$timezones        = timezone_identifiers_list();
+		?>
+		<select id="wcd_timezone" name="wcd_timezone">
+			<?php foreach ( $timezones as $timezone ) : ?>
+				<option value="<?php echo esc_attr( $timezone ); ?>" <?php selected( $current_timezone, $timezone ); ?>>
+					<?php echo esc_html( str_replace( '_', ' ', $timezone ) ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php echo esc_html__( 'Used to display match dates and times on the frontend.', 'world-cup-data' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Renders language dropdown.
+	 */
+	public function render_language_field() {
+		$current_language = (string) get_option( 'wcd_language', 'en' );
+		$languages        = $this->get_language_options();
+		?>
+		<select id="wcd_language" name="wcd_language">
+			<?php foreach ( $languages as $code => $label ) : ?>
+				<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $current_language, $code ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php echo esc_html__( 'Saved for frontend display preferences. More language-specific output can be added later.', 'world-cup-data' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Returns allowed language options.
+	 *
+	 * @return array
+	 */
+	private function get_language_options() {
+		return array(
+			'en' => __( 'English', 'world-cup-data' ),
+			'de' => __( 'German', 'world-cup-data' ),
+			'fr' => __( 'French', 'world-cup-data' ),
+			'es' => __( 'Spanish', 'world-cup-data' ),
+			'hr' => __( 'Croatian', 'world-cup-data' ),
 		);
 	}
 
