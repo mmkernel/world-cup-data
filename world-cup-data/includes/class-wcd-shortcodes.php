@@ -303,7 +303,7 @@ class WCD_Shortcodes {
 		}
 
 		$panels = array(
-			'upcoming' => $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED' ) ),
+			'upcoming' => $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED', 'TIMED' ) ),
 			'live'     => $matches->render_tab_matches( $all_matches, 'live', array( 'IN_PLAY', 'PAUSED', 'LIVE' ) ),
 			'results'  => $matches->render_tab_matches( $all_matches, 'results', array( 'FINISHED' ) ),
 			'tables'   => $standings_view,

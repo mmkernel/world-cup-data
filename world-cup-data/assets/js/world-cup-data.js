@@ -47,12 +47,14 @@
 		var panels = root.querySelectorAll('[data-wcd-panel]');
 
 		panels.forEach(function (panel) {
+			var panelName = panel.getAttribute('data-wcd-panel');
 			var cards = panel.querySelectorAll('[data-wcd-match-card]');
 			var visibleCount = 0;
+			var shouldFilter = panelName === 'upcoming' || panelName === 'results';
 
 			cards.forEach(function (card) {
 				var teams = normalize(card.getAttribute('data-teams'));
-				var visible = !selected || teams.indexOf(selected) !== -1;
+				var visible = !shouldFilter || !selected || teams.indexOf(selected) !== -1;
 				card.hidden = !visible;
 
 				if (visible) {
@@ -63,7 +65,7 @@
 			var empty = panel.querySelector('[data-wcd-filter-empty]');
 
 			if (empty) {
-				empty.hidden = !selected || visibleCount > 0 || cards.length === 0;
+				empty.hidden = !shouldFilter || !selected || visibleCount > 0 || cards.length === 0;
 			}
 		});
 

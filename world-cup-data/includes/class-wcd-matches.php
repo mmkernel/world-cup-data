@@ -23,7 +23,7 @@ class WCD_Matches {
 	 * @return string
 	 */
 	public function render_tab_matches( $matches, $tab, $statuses ) {
-		$filtered = $this->filter_by_status( $matches, $statuses );
+		$filtered = $this->sort_matches( $this->filter_by_status( $matches, $statuses ), $tab );
 
 		if ( empty( $filtered ) ) {
 			return '<p class="wcd-empty" data-wcd-empty>' . esc_html( wcd_get_text( 'no_matches' ) ) . '</p>';
@@ -85,6 +85,47 @@ class WCD_Matches {
 		}
 
 		return $filtered;
+	}
+
+	/**
+	 * Sorts matches for predictable tab output.
+	 *
+	 * @param array  $matches Match data.
+	 * @param string $tab     Tab key.
+	 * @return array
+	 */
+	private function sort_matches( $matches, $tab ) {
+		usort(
+			$matches,
+			function ( $first, $second ) use ( $tab ) {
+				$first_time  = $this->get_match_sort_time( $first );
+				$second_time = $this->get_match_sort_time( $second );
+
+				if ( 'results' === $tab ) {
+					return $second_time <=> $first_time;
+				}
+
+				return $first_time <=> $second_time;
+			}
+		);
+
+		return $matches;
+	}
+
+	/**
+	 * Returns a timestamp for sorting, pushing missing dates to the bottom.
+	 *
+	 * @param array $match Match data.
+	 * @return int
+	 */
+	private function get_match_sort_time( $match ) {
+		if ( empty( $match['utcDate'] ) ) {
+			return PHP_INT_MAX;
+		}
+
+		$timestamp = strtotime( $match['utcDate'] );
+
+		return false === $timestamp ? PHP_INT_MAX : $timestamp;
 	}
 
 	/**
