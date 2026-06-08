@@ -24,6 +24,10 @@ define( 'WCD_COMPETITION_CODE', 'WC' );
 
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-api.php';
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-admin.php';
+require_once WCD_PLUGIN_DIR . 'includes/class-wcd-matches.php';
+require_once WCD_PLUGIN_DIR . 'includes/class-wcd-standings.php';
+require_once WCD_PLUGIN_DIR . 'includes/class-wcd-filters.php';
+require_once WCD_PLUGIN_DIR . 'includes/class-wcd-tabs.php';
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-shortcodes.php';
 
 /**

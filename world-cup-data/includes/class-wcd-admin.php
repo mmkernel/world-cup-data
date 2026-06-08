@@ -319,30 +319,30 @@ class WCD_Admin {
 			<hr />
 
 			<h2><?php echo esc_html__( 'Shortcodes', 'world-cup-data' ); ?></h2>
-			<p><?php echo esc_html__( 'Use these shortcodes in posts, pages, or widget areas.', 'world-cup-data' ); ?></p>
+			<p><?php echo esc_html__( 'Use the unified shortcode in posts, pages, or widget areas.', 'world-cup-data' ); ?></p>
 			<table class="widefat striped" style="max-width: 900px;">
 				<thead>
 					<tr>
-						<th><?php echo esc_html__( 'Shortcode', 'world-cup-data' ); ?></th>
+						<th><?php echo esc_html__( 'Shortcode or URL', 'world-cup-data' ); ?></th>
 						<th><?php echo esc_html__( 'Description', 'world-cup-data' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr>
-						<td><code>[worldcup_matches]</code></td>
-						<td><?php echo esc_html__( 'Shows upcoming, live, and finished World Cup matches grouped by date.', 'world-cup-data' ); ?></td>
+						<td><code>[worldcup]</code></td>
+						<td><?php echo esc_html__( 'Shows the tabbed World Cup interface with Upcoming, Live, Results, Tables, and team filtering.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
-						<td><code>[worldcup_matches status="SCHEDULED" limit="20"]</code></td>
-						<td><?php echo esc_html__( 'Filters matches by status. Supported statuses: SCHEDULED, FINISHED, LIVE, all.', 'world-cup-data' ); ?></td>
+						<td><code>[worldcup default_tab="results"]</code></td>
+						<td><?php echo esc_html__( 'Opens the interface on a specific tab. Supported values: upcoming, live, results, tables.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
-						<td><code>[worldcup_results]</code></td>
-						<td><?php echo esc_html__( 'Shows finished matches only, including final scores.', 'world-cup-data' ); ?></td>
+						<td><code>?team=Croatia</code></td>
+						<td><?php echo esc_html__( 'Preselects a team in the frontend filter.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
-						<td><code>[worldcup_standings]</code></td>
-						<td><?php echo esc_html__( 'Shows World Cup group standings when available from the API.', 'world-cup-data' ); ?></td>
+						<td><code>?team=Brazil&amp;tab=results</code></td>
+						<td><?php echo esc_html__( 'Preselects both a team and a tab without making additional API requests.', 'world-cup-data' ); ?></td>
 					</tr>
 				</tbody>
 			</table>
