@@ -74,6 +74,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'No World Cup matches found for this view.',
 			'no_standings'           => 'No World Cup standings are available yet.',
 			'no_team_matches'        => 'No matches found for the selected team in this tab.',
+			'no_today_matches'       => 'No World Cup matches scheduled for today.',
 			'played_short'           => 'P',
 			'points_short'           => 'Pts',
 			'position_short'         => 'Pos',
@@ -102,6 +103,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'Keine WM-Spiele fuer diese Ansicht gefunden.',
 			'no_standings'           => 'Noch keine WM-Tabelle verfuegbar.',
 			'no_team_matches'        => 'Keine Spiele fuer das ausgewaehlte Team in diesem Tab gefunden.',
+			'no_today_matches'       => 'Heute sind keine WM-Spiele angesetzt.',
 			'played_short'           => 'Sp',
 			'points_short'           => 'Pkt',
 			'position_short'         => 'Pos',
@@ -130,6 +132,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'Aucun match de Coupe du monde trouve pour cette vue.',
 			'no_standings'           => 'Aucun classement de Coupe du monde disponible pour le moment.',
 			'no_team_matches'        => 'Aucun match trouve pour cette equipe dans cet onglet.',
+			'no_today_matches'       => 'Aucun match de Coupe du monde prevu aujourd hui.',
 			'played_short'           => 'J',
 			'points_short'           => 'Pts',
 			'position_short'         => 'Pos',
@@ -158,6 +161,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'No se encontraron partidos del Mundial para esta vista.',
 			'no_standings'           => 'Todavia no hay clasificacion del Mundial disponible.',
 			'no_team_matches'        => 'No se encontraron partidos para el equipo seleccionado en esta pestana.',
+			'no_today_matches'       => 'No hay partidos del Mundial programados para hoy.',
 			'played_short'           => 'J',
 			'points_short'           => 'Pts',
 			'position_short'         => 'Pos',
@@ -186,6 +190,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'Nisu pronađene utakmice Svjetskog prvenstva za ovaj prikaz.',
 			'no_standings'           => 'Poredak Svjetskog prvenstva još nije dostupan.',
 			'no_team_matches'        => 'Nema utakmica za odabranu momcad u ovoj kartici.',
+			'no_today_matches'       => 'Danas nema zakazanih utakmica Svjetskog prvenstva.',
 			'played_short'           => 'O',
 			'points_short'           => 'Bod',
 			'position_short'         => 'Poz',
@@ -214,6 +219,7 @@ function wcd_get_text( $key ) {
 			'no_matches'             => 'Nisu pronađene utakmice Svjetskog prvenstva za ovaj prikaz.',
 			'no_standings'           => 'Tabela Svjetskog prvenstva još nije dostupna.',
 			'no_team_matches'        => 'Nema utakmica za odabrani tim u ovoj kartici.',
+			'no_today_matches'       => 'Danas nema zakazanih utakmica Svjetskog prvenstva.',
 			'played_short'           => 'O',
 			'points_short'           => 'Bod',
 			'position_short'         => 'Poz',
@@ -258,6 +264,7 @@ class WCD_Shortcodes {
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_shortcode( 'worldcup', array( $this, 'render_worldcup_shortcode' ) );
+		add_shortcode( 'worldcup_today', array( $this, 'render_today_shortcode' ) );
 
 		// Keep older shortcodes functional while the new [worldcup] shortcode replaces them.
 		add_shortcode( 'worldcup_matches', array( $this, 'render_worldcup_shortcode' ) );
@@ -351,6 +358,39 @@ class WCD_Shortcodes {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Renders [worldcup_today].
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return string
+	 */
+	public function render_today_shortcode( $atts = array() ) {
+		wp_enqueue_style( 'wcd-world-cup-data' );
+
+		$atts = shortcode_atts(
+			array(
+				'show_finished' => 'no',
+				'limit'         => 0,
+				'title'         => '',
+			),
+			$atts,
+			'worldcup_today'
+		);
+
+		$matches_data = $this->api->get_cached_matches();
+
+		if ( false === $matches_data ) {
+			return '<div class="wcd-today-wrap"><p class="wcd-today-empty">' . esc_html( wcd_get_text( 'no_today_matches' ) ) . '</p></div>';
+		}
+
+		$matches_renderer = new WCD_Matches();
+		$show_finished    = 'yes' === strtolower( sanitize_text_field( $atts['show_finished'] ) );
+		$limit            = absint( $atts['limit'] );
+		$title            = sanitize_text_field( $atts['title'] );
+
+		return $matches_renderer->render_today_matches( $matches_data['matches'] ?? array(), $show_finished, $limit, $title );
 	}
 
 	/**

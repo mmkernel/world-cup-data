@@ -338,6 +338,14 @@ class WCD_Admin {
 						<td><?php echo esc_html__( 'Opens the interface on a specific tab. Supported values: upcoming, live, results, tables.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
+						<td><code>[worldcup_today]</code></td>
+						<td><?php echo esc_html__( 'Shows only today\'s upcoming and live World Cup matches from cached data.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
+						<td><code>[worldcup_today show_finished="yes" limit="5" title="Today&apos;s World Cup Matches"]</code></td>
+						<td><?php echo esc_html__( 'Optional compact homepage view with finished matches, a limit, and a custom title.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
 						<td><code>?team=Croatia</code></td>
 						<td><?php echo esc_html__( 'Preselects a team in the frontend filter.', 'world-cup-data' ); ?></td>
 					</tr>

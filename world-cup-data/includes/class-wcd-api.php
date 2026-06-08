@@ -33,6 +33,15 @@ class WCD_API {
 	}
 
 	/**
+	 * Returns cached World Cup matches without making an API request.
+	 *
+	 * @return array|false
+	 */
+	public function get_cached_matches() {
+		return get_transient( self::MATCHES_TRANSIENT );
+	}
+
+	/**
 	 * Returns World Cup standings, using cache when available.
 	 *
 	 * @param bool $force_refresh Whether to bypass existing cache.

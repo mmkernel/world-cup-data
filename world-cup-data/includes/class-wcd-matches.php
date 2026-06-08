@@ -67,6 +67,43 @@ class WCD_Matches {
 	}
 
 	/**
+	 * Renders today's matches from cached match data.
+	 *
+	 * @param array  $matches       Match data.
+	 * @param bool   $show_finished Whether to include finished matches.
+	 * @param int    $limit         Maximum cards to show. Zero means no limit.
+	 * @param string $title         Optional section title.
+	 * @return string
+	 */
+	public function render_today_matches( $matches, $show_finished, $limit, $title ) {
+		$today_matches = $this->get_today_matches( $matches, $show_finished );
+
+		if ( $limit > 0 ) {
+			$today_matches = array_slice( $today_matches, 0, $limit );
+		}
+
+		ob_start();
+		?>
+		<div class="wcd-today-wrap">
+			<?php if ( '' !== $title ) : ?>
+				<h2 class="wcd-today-title"><?php echo esc_html( $title ); ?></h2>
+			<?php endif; ?>
+
+			<?php if ( empty( $today_matches ) ) : ?>
+				<p class="wcd-today-empty"><?php echo esc_html( wcd_get_text( 'no_today_matches' ) ); ?></p>
+			<?php else : ?>
+				<div class="wcd-today-list">
+					<?php foreach ( $today_matches as $match ) : ?>
+						<?php echo $this->render_today_card( $match ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
 	 * Filters matches by football-data.org status.
 	 *
 	 * @param array $matches  Match data.
@@ -129,6 +166,43 @@ class WCD_Matches {
 	}
 
 	/**
+	 * Returns today's matches based on the WordPress site timezone.
+	 *
+	 * @param array $matches       Match data.
+	 * @param bool  $show_finished Whether to include finished matches.
+	 * @return array
+	 */
+	private function get_today_matches( $matches, $show_finished ) {
+		$timezone         = wp_timezone();
+		$today            = wp_date( 'Y-m-d', time(), $timezone );
+		$allowed_statuses = array( 'SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'LIVE' );
+
+		if ( $show_finished ) {
+			$allowed_statuses[] = 'FINISHED';
+		}
+
+		$today_matches = array();
+
+		foreach ( $matches as $match ) {
+			$status = $match['status'] ?? '';
+
+			if ( ! in_array( $status, $allowed_statuses, true ) || empty( $match['utcDate'] ) ) {
+				continue;
+			}
+
+			$timestamp = strtotime( $match['utcDate'] );
+
+			if ( false === $timestamp || wp_date( 'Y-m-d', $timestamp, $timezone ) !== $today ) {
+				continue;
+			}
+
+			$today_matches[] = $match;
+		}
+
+		return $this->sort_matches( $today_matches, 'upcoming' );
+	}
+
+	/**
 	 * Renders one match card.
 	 *
 	 * @param array  $match Match data.
@@ -181,6 +255,66 @@ class WCD_Matches {
 		</article>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Renders one compact today match card.
+	 *
+	 * @param array $match Match data.
+	 * @return string
+	 */
+	private function render_today_card( $match ) {
+		$home_data  = $match['homeTeam'] ?? array();
+		$away_data  = $match['awayTeam'] ?? array();
+		$home_team  = $home_data['name'] ?? wcd_get_text( 'home_team' );
+		$away_team  = $away_data['name'] ?? wcd_get_text( 'away_team' );
+		$status     = $match['status'] ?? '';
+		$show_score = in_array( $status, array( 'IN_PLAY', 'PAUSED', 'LIVE', 'FINISHED' ), true );
+		$time       = $this->format_today_time( $match );
+		$score      = $this->format_score( $match );
+		?>
+		<article class="wcd-today-card">
+			<div class="wcd-today-teams">
+				<span class="wcd-today-team wcd-today-home-team">
+					<?php echo wp_kses_post( wcd_render_team_flag( $home_data ) ); ?>
+					<span><?php echo esc_html( $home_team ); ?></span>
+				</span>
+
+				<span class="wcd-today-center"><?php echo esc_html( $show_score ? $score : wcd_get_text( 'versus' ) ); ?></span>
+
+				<span class="wcd-today-team wcd-today-away-team">
+					<?php echo wp_kses_post( wcd_render_team_flag( $away_data ) ); ?>
+					<span><?php echo esc_html( $away_team ); ?></span>
+				</span>
+			</div>
+
+			<div class="wcd-today-meta">
+				<span class="wcd-today-time"><?php echo esc_html( $time ); ?></span>
+				<span class="wcd-today-status"><?php echo esc_html( $this->format_status( $status ) ); ?></span>
+			</div>
+		</article>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Formats today's kickoff time using the WordPress site timezone.
+	 *
+	 * @param array $match Match data.
+	 * @return string
+	 */
+	private function format_today_time( $match ) {
+		if ( empty( $match['utcDate'] ) ) {
+			return wcd_get_text( 'tba' );
+		}
+
+		$timestamp = strtotime( $match['utcDate'] );
+
+		if ( false === $timestamp ) {
+			return wcd_get_text( 'tba' );
+		}
+
+		return wp_date( get_option( 'time_format' ), $timestamp, wp_timezone() );
 	}
 
 	/**
