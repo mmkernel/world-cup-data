@@ -1,0 +1,216 @@
+<?php
+/**
+ * Admin settings page.
+ *
+ * @package WorldCupData
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Registers and renders plugin settings.
+ */
+class WCD_Admin {
+
+	/**
+	 * API client.
+	 *
+	 * @var WCD_API
+	 */
+	private $api;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param WCD_API $api API client.
+	 */
+	public function __construct( WCD_API $api ) {
+		$this->api = $api;
+
+		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
+		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_post_wcd_clear_cache', array( $this, 'handle_clear_cache' ) );
+	}
+
+	/**
+	 * Adds the settings page under Settings.
+	 */
+	public function add_settings_page() {
+		add_options_page(
+			__( 'World Cup Data', 'world-cup-data' ),
+			__( 'World Cup Data', 'world-cup-data' ),
+			'manage_options',
+			'world-cup-data',
+			array( $this, 'render_settings_page' )
+		);
+	}
+
+	/**
+	 * Registers settings and fields.
+	 */
+	public function register_settings() {
+		register_setting(
+			'wcd_settings',
+			'wcd_api_token',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_api_token' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			'wcd_settings',
+			'wcd_cache_duration',
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( $this, 'sanitize_cache_duration' ),
+				'default'           => 30,
+			)
+		);
+
+		add_settings_section(
+			'wcd_api_section',
+			__( 'API Settings', 'world-cup-data' ),
+			array( $this, 'render_section_description' ),
+			'world-cup-data'
+		);
+
+		add_settings_field(
+			'wcd_api_token',
+			__( 'API Token', 'world-cup-data' ),
+			array( $this, 'render_api_token_field' ),
+			'world-cup-data',
+			'wcd_api_section'
+		);
+
+		add_settings_field(
+			'wcd_cache_duration',
+			__( 'Cache Duration', 'world-cup-data' ),
+			array( $this, 'render_cache_duration_field' ),
+			'world-cup-data',
+			'wcd_api_section'
+		);
+	}
+
+	/**
+	 * Sanitizes the API token.
+	 *
+	 * @param string $value Raw token.
+	 * @return string
+	 */
+	public function sanitize_api_token( $value ) {
+		return sanitize_text_field( wp_unslash( $value ) );
+	}
+
+	/**
+	 * Sanitizes cache duration, defaulting to 30 minutes.
+	 *
+	 * @param mixed $value Raw duration.
+	 * @return int
+	 */
+	public function sanitize_cache_duration( $value ) {
+		$value = absint( $value );
+
+		return $value > 0 ? $value : 30;
+	}
+
+	/**
+	 * Renders settings section text.
+	 */
+	public function render_section_description() {
+		echo '<p>' . esc_html__( 'Enter your football-data.org API v4 token. API responses are cached to support the free tier rate limits.', 'world-cup-data' ) . '</p>';
+	}
+
+	/**
+	 * Renders API token field.
+	 */
+	public function render_api_token_field() {
+		$value = (string) get_option( 'wcd_api_token', '' );
+
+		printf(
+			'<input type="password" class="regular-text" id="wcd_api_token" name="wcd_api_token" value="%s" autocomplete="off" />',
+			esc_attr( $value )
+		);
+		echo '<p class="description">' . esc_html__( 'Stored securely in WordPress options and used only for server-side API requests.', 'world-cup-data' ) . '</p>';
+	}
+
+	/**
+	 * Renders cache duration field.
+	 */
+	public function render_cache_duration_field() {
+		$value = absint( get_option( 'wcd_cache_duration', 30 ) );
+
+		printf(
+			'<input type="number" min="1" step="1" id="wcd_cache_duration" name="wcd_cache_duration" value="%d" /> <span>%s</span>',
+			$value,
+			esc_html__( 'minutes', 'world-cup-data' )
+		);
+	}
+
+	/**
+	 * Renders the settings page.
+	 */
+	public function render_settings_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$cache_cleared = isset( $_GET['wcd_cache_cleared'] ) ? absint( $_GET['wcd_cache_cleared'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		?>
+		<div class="wrap">
+			<h1><?php echo esc_html__( 'World Cup Data', 'world-cup-data' ); ?></h1>
+
+			<?php if ( 1 === $cache_cleared ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php echo esc_html__( 'World Cup Data cache cleared.', 'world-cup-data' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<form method="post" action="options.php">
+				<?php
+				settings_fields( 'wcd_settings' );
+				do_settings_sections( 'world-cup-data' );
+				submit_button();
+				?>
+			</form>
+
+			<hr />
+
+			<h2><?php echo esc_html__( 'Cached API Data', 'world-cup-data' ); ?></h2>
+			<p><?php echo esc_html__( 'Clear cached matches and standings if you need to fetch fresh data before the cache expires.', 'world-cup-data' ); ?></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="wcd_clear_cache" />
+				<?php wp_nonce_field( 'wcd_clear_cache', 'wcd_clear_cache_nonce' ); ?>
+				<?php submit_button( __( 'Clear Cached API Data', 'world-cup-data' ), 'secondary', 'submit', false ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Handles the clear cache form submission.
+	 */
+	public function handle_clear_cache() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage World Cup Data settings.', 'world-cup-data' ) );
+		}
+
+		check_admin_referer( 'wcd_clear_cache', 'wcd_clear_cache_nonce' );
+
+		$this->api->clear_cache();
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'              => 'world-cup-data',
+					'wcd_cache_cleared' => 1,
+				),
+				admin_url( 'options-general.php' )
+			)
+		);
+		exit;
+	}
+}
