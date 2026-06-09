@@ -287,6 +287,9 @@ class WCD_Admin {
 			'es' => __( 'Spanish', 'world-cup-data' ),
 			'hr' => __( 'Croatian', 'world-cup-data' ),
 			'bs' => __( 'Bosnian', 'world-cup-data' ),
+			'pt' => __( 'Portuguese', 'world-cup-data' ),
+			'ja' => __( 'Japanese', 'world-cup-data' ),
+			'tr' => __( 'Turkish', 'world-cup-data' ),
 		);
 	}
 
