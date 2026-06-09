@@ -98,6 +98,11 @@ class WCD_Matches {
 					<?php endforeach; ?>
 				</div>
 			<?php endif; ?>
+
+			<div class="wcd-credit">
+				<?php echo esc_html__( 'Created by', 'world-cup-data' ); ?>
+				<a href="<?php echo esc_url( 'https://masterymesh.com' ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'MasteryMesh', 'world-cup-data' ); ?></a>
+			</div>
 		</div>
 		<?php
 		return ob_get_clean();

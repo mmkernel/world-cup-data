@@ -355,6 +355,8 @@ class WCD_Shortcodes {
 					<?php echo $tabs->render_panel( $key, $content, $selected_tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<?php endforeach; ?>
 			</div>
+
+			<?php echo $this->render_credit(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -391,6 +393,20 @@ class WCD_Shortcodes {
 		$title            = sanitize_text_field( $atts['title'] );
 
 		return $matches_renderer->render_today_matches( $matches_data['matches'] ?? array(), $show_finished, $limit, $title );
+	}
+
+	/**
+	 * Renders a discreet creator credit.
+	 *
+	 * @return string
+	 */
+	private function render_credit() {
+		return sprintf(
+			'<div class="wcd-credit">%s <a href="%s" target="_blank" rel="noopener noreferrer">%s</a></div>',
+			esc_html__( 'Created by', 'world-cup-data' ),
+			esc_url( 'https://masterymesh.com' ),
+			esc_html__( 'MasteryMesh', 'world-cup-data' )
+		);
 	}
 
 	/**
