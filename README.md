@@ -57,7 +57,7 @@ https://www.football-data.org/
 
 ### Method 1: Upload ZIP
 
-1. Download the plugin ZIP.
+1. Download the plugin ZIP "world-cup-data.zip".
 2. Go to **WordPress Admin → Plugins → Add New → Upload Plugin**
 3. Upload the ZIP file.
 4. Activate the plugin.
