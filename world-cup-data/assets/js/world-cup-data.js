@@ -24,6 +24,7 @@
 	function setActiveTab(root, tabName) {
 		var buttons = root.querySelectorAll('[data-wcd-tab]');
 		var panels = root.querySelectorAll('[data-wcd-panel]');
+		var filterWrap = root.querySelector('[data-wcd-team-filter-wrap]');
 
 		buttons.forEach(function (button) {
 			var isActive = button.getAttribute('data-wcd-tab') === tabName;
@@ -39,6 +40,11 @@
 		});
 
 		root.setAttribute('data-active-tab', tabName);
+
+		if (filterWrap) {
+			filterWrap.hidden = !(tabName === 'upcoming' || tabName === 'results');
+		}
+
 		setUrlParam('tab', tabName === 'upcoming' ? '' : tabName);
 	}
 
@@ -75,6 +81,9 @@
 	function initWorldCup(root) {
 		var tabs = root.querySelectorAll('[data-wcd-tab]');
 		var filter = root.querySelector('[data-wcd-team-filter]');
+		var activeTab = root.getAttribute('data-active-tab') || 'upcoming';
+
+		setActiveTab(root, activeTab);
 
 		tabs.forEach(function (tab) {
 			tab.addEventListener('click', function () {

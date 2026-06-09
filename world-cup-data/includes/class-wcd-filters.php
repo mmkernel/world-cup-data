@@ -24,7 +24,7 @@ class WCD_Filters {
 	public function render_team_filter( $teams, $selected_team ) {
 		ob_start();
 		?>
-		<div class="wcd-filter">
+		<div class="wcd-filter" data-wcd-team-filter-wrap>
 			<label class="wcd-filter-label" for="wcd-team-filter"><?php echo esc_html( wcd_get_text( 'filter_by_team' ) ); ?></label>
 			<select id="wcd-team-filter" class="wcd-team-filter" data-wcd-team-filter>
 				<option value=""><?php echo esc_html( wcd_get_text( 'all_teams' ) ); ?></option>

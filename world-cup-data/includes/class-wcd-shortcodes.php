@@ -347,8 +347,8 @@ class WCD_Shortcodes {
 		ob_start();
 		?>
 		<div class="wcd-wrap wcd-worldcup" data-wcd-worldcup data-active-tab="<?php echo esc_attr( $selected_tab ); ?>">
-			<?php echo $filters->render_team_filter( $teams, $selected_team ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php echo $tabs->render_nav( $selected_tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo $filters->render_team_filter( $teams, $selected_team ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
 			<div class="wcd-tab-panels">
 				<?php foreach ( $panels as $key => $content ) : ?>

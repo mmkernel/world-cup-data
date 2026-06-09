@@ -270,7 +270,7 @@ class WCD_Admin {
 				</option>
 			<?php endforeach; ?>
 		</select>
-		<p class="description"><?php echo esc_html__( 'Saved for frontend display preferences. More language-specific output can be added later.', 'world-cup-data' ); ?></p>
+		<p class="description"><?php echo esc_html__( 'Saved for frontend display preferences.', 'world-cup-data' ); ?></p>
 		<?php
 	}
 
