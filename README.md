@@ -1,10 +1,17 @@
-# World Cup Data for WordPress
+# World Cup Data WordPress Plugin
 
 Display FIFA World Cup 2026 fixtures, results, standings, and team-specific matches on your WordPress website using the football-data.org API.
 
 Built with the free football-data.org tier in mind, including caching and frontend filtering to minimize API requests.
 
 [![WorldCupData](https://masterymesh.com/blog/wp-content/uploads/2026/06/worldcup-data-frontend.webp)](https://masterymesh.com/blog/worldcup-data-wordpress-plugin/)
+
+## Keywords
+
+World Cup 2026, FIFA World Cup, WordPress Plugin,
+World Cup Fixtures, World Cup Results,
+World Cup Standings, Football Data API,
+Sports WordPress Plugin
 
 ## Features
 

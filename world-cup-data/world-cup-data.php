@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: World Cup Data
+ * Plugin Name: World Cup Data WordPress Plugin
  * Plugin URI: https://MasteryMesh.com
  * Description: Displays FIFA World Cup fixtures, results, and standings from football-data.org API v4.
  * Version: 1.0.0
