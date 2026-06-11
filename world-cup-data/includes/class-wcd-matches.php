@@ -20,10 +20,16 @@ class WCD_Matches {
 	 * @param array  $matches  Match data.
 	 * @param string $tab      Tab key.
 	 * @param array  $statuses Allowed statuses.
+	 * @param int    $limit    Maximum cards to show. Zero means no limit.
 	 * @return string
 	 */
-	public function render_tab_matches( $matches, $tab, $statuses ) {
+	public function render_tab_matches( $matches, $tab, $statuses, $limit = 0 ) {
 		$filtered = $this->sort_matches( $this->filter_by_status( $matches, $statuses ), $tab );
+		$limit    = absint( $limit );
+
+		if ( $limit > 0 ) {
+			$filtered = array_slice( $filtered, 0, $limit );
+		}
 
 		if ( empty( $filtered ) ) {
 			return '<p class="wcd-empty" data-wcd-empty>' . esc_html( wcd_get_text( 'no_matches' ) ) . '</p>';
