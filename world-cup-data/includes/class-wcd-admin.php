@@ -33,6 +33,8 @@ class WCD_Admin {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_notices', array( $this, 'render_activation_notice' ) );
 		add_action( 'admin_post_wcd_clear_cache', array( $this, 'handle_clear_cache' ) );
+		add_action( 'admin_post_wcd_refresh_data', array( $this, 'handle_refresh_data' ) );
+		add_action( 'update_option_wcd_cache_duration', array( $this, 'handle_cache_duration_update' ), 10, 3 );
 	}
 
 	/**
@@ -180,6 +182,20 @@ class WCD_Admin {
 	}
 
 	/**
+	 * Reschedules background refreshes when cache duration changes.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $value     New option value.
+	 * @param string $option   Option name.
+	 */
+	public function handle_cache_duration_update( $old_value, $value, $option ) {
+		unset( $old_value, $value, $option );
+
+		wp_clear_scheduled_hook( WCD_API::CRON_HOOK );
+		wp_schedule_event( time() + MINUTE_IN_SECONDS, 'wcd_cache_duration', WCD_API::CRON_HOOK );
+	}
+
+	/**
 	 * Sanitizes selected timezone.
 	 *
 	 * @param string $value Raw timezone.
@@ -302,6 +318,9 @@ class WCD_Admin {
 		}
 
 		$cache_cleared = isset( $_GET['wcd_cache_cleared'] ) ? absint( $_GET['wcd_cache_cleared'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$data_refreshed = isset( $_GET['wcd_data_refreshed'] ) ? absint( $_GET['wcd_data_refreshed'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$last_success   = $this->api->get_last_success_time();
+		$last_error     = $this->api->get_last_error();
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'World Cup Data', 'world-cup-data' ); ?></h1>
@@ -309,6 +328,18 @@ class WCD_Admin {
 			<?php if ( 1 === $cache_cleared ) : ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php echo esc_html__( 'World Cup Data cache cleared.', 'world-cup-data' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( 1 === $data_refreshed ) : ?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php echo esc_html__( 'World Cup Data refresh completed.', 'world-cup-data' ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( 2 === $data_refreshed ) : ?>
+				<div class="notice notice-warning is-dismissible">
+					<p><?php echo esc_html__( 'World Cup Data refresh did not receive new API data. Existing fallback data was kept.', 'world-cup-data' ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -370,12 +401,37 @@ class WCD_Admin {
 			<hr />
 
 			<h2><?php echo esc_html__( 'Cached API Data', 'world-cup-data' ); ?></h2>
-			<p><?php echo esc_html__( 'Clear cached matches and standings if you need to fetch fresh data before the cache expires.', 'world-cup-data' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="wcd_clear_cache" />
-				<?php wp_nonce_field( 'wcd_clear_cache', 'wcd_clear_cache_nonce' ); ?>
-				<?php submit_button( __( 'Clear Cached API Data', 'world-cup-data' ), 'secondary', 'submit', false ); ?>
-			</form>
+			<p><?php echo esc_html__( 'Frontend shortcodes render only stored data. API requests run in WP-Cron or from the manual refresh button.', 'world-cup-data' ); ?></p>
+			<table class="widefat striped" style="max-width: 900px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Last successful fetch', 'world-cup-data' ); ?></th>
+						<td>
+							<?php
+							echo $last_success
+								? esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last_success ) )
+								: esc_html__( 'Never', 'world-cup-data' );
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Last API error', 'world-cup-data' ); ?></th>
+						<td><?php echo '' !== $last_error ? esc_html( $last_error ) : esc_html__( 'None', 'world-cup-data' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<div style="margin-top: 1rem;">
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block; margin-right: 0.5rem;">
+					<input type="hidden" name="action" value="wcd_refresh_data" />
+					<?php wp_nonce_field( 'wcd_refresh_data', 'wcd_refresh_data_nonce' ); ?>
+					<?php submit_button( __( 'Refresh Data Now', 'world-cup-data' ), 'primary', 'submit', false ); ?>
+				</form>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;">
+					<input type="hidden" name="action" value="wcd_clear_cache" />
+					<?php wp_nonce_field( 'wcd_clear_cache', 'wcd_clear_cache_nonce' ); ?>
+					<?php submit_button( __( 'Clear Cache', 'world-cup-data' ), 'secondary', 'submit', false ); ?>
+				</form>
+			</div>
 		</div>
 		<?php
 	}
@@ -397,6 +453,30 @@ class WCD_Admin {
 				array(
 					'page'              => 'world-cup-data',
 					'wcd_cache_cleared' => 1,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Handles the manual data refresh form submission.
+	 */
+	public function handle_refresh_data() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage World Cup Data settings.', 'world-cup-data' ) );
+		}
+
+		check_admin_referer( 'wcd_refresh_data', 'wcd_refresh_data_nonce' );
+
+		$success = $this->api->refresh_data( true );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'               => 'world-cup-data',
+					'wcd_data_refreshed' => $success ? 1 : 2,
 				),
 				admin_url( 'admin.php' )
 			)

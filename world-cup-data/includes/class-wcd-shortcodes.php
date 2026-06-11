@@ -417,8 +417,11 @@ class WCD_Shortcodes {
 		$matches_data = $this->api->get_matches();
 
 		if ( is_wp_error( $matches_data ) ) {
-			return $this->render_notice( $matches_data->get_error_message() );
+			return $this->render_notice( WCD_API::LOADING_MESSAGE );
 		}
+
+		$is_stale_data = 'stale' === ( $matches_data['__wcd_cache_status'] ?? '' );
+		unset( $matches_data['__wcd_cache_status'] );
 
 		$all_matches = $matches_data['matches'] ?? array();
 		$teams       = $matches->get_teams( $all_matches );
@@ -444,15 +447,16 @@ class WCD_Shortcodes {
 
 			if ( 'tables' === $tab ) {
 				$standings_data   = $this->api->get_standings();
+				$is_stale_data    = $is_stale_data || ( ! is_wp_error( $standings_data ) && 'stale' === ( $standings_data['__wcd_cache_status'] ?? '' ) );
 				$panels['tables'] = is_wp_error( $standings_data )
-					? '<p class="wcd-empty">' . esc_html( $standings_data->get_error_message() ) . '</p>'
+					? '<p class="wcd-empty">' . esc_html( WCD_API::LOADING_MESSAGE ) . '</p>'
 					: $standings->render( $standings_data['standings'] ?? array() );
 			}
 		}
 
 		ob_start();
 		?>
-		<div class="wcd-wrap wcd-worldcup" data-wcd-worldcup data-active-tab="<?php echo esc_attr( $selected_tab ); ?>">
+		<div class="wcd-wrap wcd-worldcup <?php echo $is_stale_data ? 'wcd-data-stale' : ''; ?>" data-wcd-worldcup data-active-tab="<?php echo esc_attr( $selected_tab ); ?>">
 			<?php if ( count( $panels ) > 1 ) : ?>
 				<?php echo $tabs->render_nav( $selected_tab, array_keys( $panels ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endif; ?>
@@ -500,10 +504,13 @@ class WCD_Shortcodes {
 		$matches_data     = $this->api->get_cached_matches();
 
 		if ( false === $matches_data ) {
-			return $matches_renderer->render_today_matches( array(), $show_finished, $limit, $title );
+			return $this->render_loading_today_notice();
 		}
 
-		return $matches_renderer->render_today_matches( $matches_data['matches'] ?? array(), $show_finished, $limit, $title );
+		$is_stale_data = 'stale' === ( $matches_data['__wcd_cache_status'] ?? '' );
+		unset( $matches_data['__wcd_cache_status'] );
+
+		return $matches_renderer->render_today_matches( $matches_data['matches'] ?? array(), $show_finished, $limit, $title, $is_stale_data );
 	}
 
 	/**
@@ -580,5 +587,16 @@ class WCD_Shortcodes {
 		wp_enqueue_style( 'wcd-world-cup-data' );
 
 		return '<div class="wcd-wrap"><p class="wcd-notice">' . esc_html( $message ) . '</p></div>';
+	}
+
+	/**
+	 * Renders the lightweight loading message for [worldcup_today].
+	 *
+	 * @return string
+	 */
+	private function render_loading_today_notice() {
+		wp_enqueue_style( 'wcd-world-cup-data' );
+
+		return '<div class="wcd-wrap wcd-today-wrap wcd-worldcup-today"><p class="wcd-notice">' . esc_html( WCD_API::LOADING_MESSAGE ) . '</p></div>';
 	}
 }
