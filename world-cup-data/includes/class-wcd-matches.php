@@ -27,19 +27,15 @@ class WCD_Matches {
 		$filtered = $this->sort_matches( $this->filter_by_status( $matches, $statuses ), $tab );
 		$limit    = absint( $limit );
 
-		if ( $limit > 0 ) {
-			$filtered = array_slice( $filtered, 0, $limit );
-		}
-
 		if ( empty( $filtered ) ) {
 			return '<p class="wcd-empty" data-wcd-empty>' . esc_html( wcd_get_text( 'no_matches' ) ) . '</p>';
 		}
 
 		ob_start();
 		?>
-		<div class="wcd-match-list">
-			<?php foreach ( $filtered as $match ) : ?>
-				<?php echo $this->render_card( $match, $tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+		<div class="wcd-match-list" data-wcd-match-list data-wcd-limit="<?php echo esc_attr( $limit ); ?>">
+			<?php foreach ( $filtered as $index => $match ) : ?>
+				<?php echo $this->render_card( $match, $tab, $limit > 0 && $index >= $limit ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endforeach; ?>
 		</div>
 		<p class="wcd-empty wcd-empty-filtered" data-wcd-filter-empty hidden><?php echo esc_html( wcd_get_text( 'no_team_matches' ) ); ?></p>
@@ -216,11 +212,12 @@ class WCD_Matches {
 	/**
 	 * Renders one match card.
 	 *
-	 * @param array  $match Match data.
-	 * @param string $tab   Tab key.
+	 * @param array  $match  Match data.
+	 * @param string $tab    Tab key.
+	 * @param bool   $hidden Whether the card is initially hidden by a display limit.
 	 * @return string
 	 */
-	private function render_card( $match, $tab ) {
+	private function render_card( $match, $tab, $hidden = false ) {
 		$home_data   = $match['homeTeam'] ?? array();
 		$away_data   = $match['awayTeam'] ?? array();
 		$home_team   = $home_data['name'] ?? wcd_get_text( 'home_team' );
@@ -234,7 +231,7 @@ class WCD_Matches {
 
 		ob_start();
 		?>
-		<article class="wcd-match-card wcd-card-<?php echo esc_attr( $tab ); ?>" data-wcd-match-card data-teams="<?php echo esc_attr( $team_filter ); ?>">
+		<article class="wcd-match-card wcd-card-<?php echo esc_attr( $tab ); ?>" data-wcd-match-card data-teams="<?php echo esc_attr( $team_filter ); ?>" <?php echo $hidden ? 'hidden data-wcd-limit-hidden="true"' : ''; ?>>
 			<div class="wcd-card-teams <?php echo $is_finished ? 'wcd-card-teams-scored' : 'wcd-card-teams-upcoming'; ?>">
 				<div class="wcd-card-team wcd-card-team-home">
 					<?php echo wp_kses_post( wcd_render_team_flag( $home_data ) ); ?>
