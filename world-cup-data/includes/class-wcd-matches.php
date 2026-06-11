@@ -84,7 +84,7 @@ class WCD_Matches {
 
 		ob_start();
 		?>
-		<div class="wcd-today-wrap">
+		<div class="wcd-wrap wcd-today-wrap wcd-worldcup-today" data-wcd-worldcup-today>
 			<?php if ( '' !== $title ) : ?>
 				<h2 class="wcd-today-title"><?php echo esc_html( $title ); ?></h2>
 			<?php endif; ?>
@@ -92,7 +92,7 @@ class WCD_Matches {
 			<?php if ( empty( $today_matches ) ) : ?>
 				<p class="wcd-today-empty"><?php echo esc_html( wcd_get_text( 'no_today_matches' ) ); ?></p>
 			<?php else : ?>
-				<div class="wcd-today-list">
+				<div class="wcd-match-list wcd-today-list">
 					<?php foreach ( $today_matches as $match ) : ?>
 						<?php echo $this->render_today_card( $match ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					<?php endforeach; ?>
@@ -278,22 +278,22 @@ class WCD_Matches {
 		$time       = $this->format_today_time( $match );
 		$score      = $this->format_score( $match );
 		?>
-		<article class="wcd-today-card">
-			<div class="wcd-today-teams">
-				<span class="wcd-today-team wcd-today-home-team">
+		<article class="wcd-match-card wcd-today-card">
+			<div class="wcd-card-teams wcd-today-teams">
+				<span class="wcd-card-team wcd-card-team-home wcd-today-team wcd-today-home-team">
 					<?php echo wp_kses_post( wcd_render_team_flag( $home_data ) ); ?>
 					<span><?php echo esc_html( $home_team ); ?></span>
 				</span>
 
 				<span class="wcd-today-center"><?php echo esc_html( $show_score ? $score : wcd_get_text( 'versus' ) ); ?></span>
 
-				<span class="wcd-today-team wcd-today-away-team">
+				<span class="wcd-card-team wcd-card-team-away wcd-today-team wcd-today-away-team">
 					<?php echo wp_kses_post( wcd_render_team_flag( $away_data ) ); ?>
 					<span><?php echo esc_html( $away_team ); ?></span>
 				</span>
 			</div>
 
-			<div class="wcd-today-meta">
+			<div class="wcd-card-meta wcd-today-meta">
 				<span class="wcd-today-time"><?php echo esc_html( $time ); ?></span>
 				<span class="wcd-today-status"><?php echo esc_html( $this->format_status( $status ) ); ?></span>
 			</div>

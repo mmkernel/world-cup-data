@@ -468,16 +468,15 @@ class WCD_Shortcodes {
 			'worldcup_today'
 		);
 
-		$matches_data = $this->api->get_cached_matches();
-
-		if ( false === $matches_data ) {
-			return '<div class="wcd-today-wrap"><p class="wcd-today-empty">' . esc_html( wcd_get_text( 'no_today_matches' ) ) . '</p></div>';
-		}
-
 		$matches_renderer = new WCD_Matches();
 		$show_finished    = 'yes' === strtolower( sanitize_text_field( $atts['show_finished'] ) );
 		$limit            = absint( $atts['limit'] );
 		$title            = sanitize_text_field( $atts['title'] );
+		$matches_data     = $this->api->get_cached_matches();
+
+		if ( false === $matches_data ) {
+			return $matches_renderer->render_today_matches( array(), $show_finished, $limit, $title );
+		}
 
 		return $matches_renderer->render_today_matches( $matches_data['matches'] ?? array(), $show_finished, $limit, $title );
 	}
