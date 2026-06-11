@@ -75,9 +75,10 @@ class WCD_Matches {
 	 * @param bool   $show_finished Whether to include finished matches.
 	 * @param int    $limit         Maximum cards to show. Zero means no limit.
 	 * @param string $title         Optional section title.
+	 * @param bool   $is_stale      Whether stale fallback data is being rendered.
 	 * @return string
 	 */
-	public function render_today_matches( $matches, $show_finished, $limit, $title ) {
+	public function render_today_matches( $matches, $show_finished, $limit, $title, $is_stale = false ) {
 		$today_matches = $this->get_today_matches( $matches, $show_finished );
 
 		if ( $limit > 0 ) {
@@ -86,7 +87,7 @@ class WCD_Matches {
 
 		ob_start();
 		?>
-		<div class="wcd-wrap wcd-today-wrap wcd-worldcup-today" data-wcd-worldcup-today>
+		<div class="wcd-wrap wcd-today-wrap wcd-worldcup-today <?php echo $is_stale ? 'wcd-data-stale' : ''; ?>" data-wcd-worldcup-today>
 			<?php if ( '' !== $title ) : ?>
 				<h2 class="wcd-today-title"><?php echo esc_html( $title ); ?></h2>
 			<?php endif; ?>

@@ -298,6 +298,15 @@ Cached data is reused for:
 
 No unnecessary API calls are made during frontend interactions.
 
+Frontend shortcodes never make remote API requests while rendering. Match and standings data is refreshed by WP-Cron based on the configured cache duration, and the last successful API response is kept as a fallback if football-data.org is unavailable or rate-limited.
+
+The settings page includes:
+
+- Refresh Data Now
+- Clear Cache
+- Last successful fetch time
+- Last API error for administrators
+
 ---
 
 # Supported Data

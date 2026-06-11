@@ -1,6 +1,6 @@
 <?php
 /**
- * football-data.org API client and transient cache handling.
+ * football-data.org API client and local cache handling.
  *
  * @package WorldCupData
  */
@@ -10,87 +10,195 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Handles all communication with football-data.org.
+ * Handles cached World Cup data and background API refreshes.
  */
 class WCD_API {
 
-	const MATCHES_TRANSIENT   = 'wcd_matches_cache';
-	const STANDINGS_TRANSIENT = 'wcd_standings_cache';
+	const MATCHES_TRANSIENT       = 'wcd_matches_cache';
+	const STANDINGS_TRANSIENT     = 'wcd_standings_cache';
+	const FETCH_LOCK_TRANSIENT    = 'wcd_fetch_lock';
+	const LAST_MATCHES_OPTION     = 'wcd_last_successful_matches';
+	const LAST_STANDINGS_OPTION   = 'wcd_last_successful_standings';
+	const LAST_SUCCESS_OPTION     = 'wcd_last_successful_fetch_time';
+	const LAST_ERROR_OPTION       = 'wcd_last_api_error';
+	const DATA_STATUS_OPTION      = 'wcd_data_status';
+	const CRON_HOOK               = 'wcd_refresh_data_event';
+	const LOADING_MESSAGE         = 'Match data is currently loading. Please check again soon.';
 
 	/**
-	 * Returns World Cup matches, using cache when available.
+	 * Returns locally stored World Cup matches.
 	 *
-	 * @param bool $force_refresh Whether to bypass existing cache.
+	 * This method never performs a remote request.
+	 *
 	 * @return array|WP_Error
 	 */
-	public function get_matches( $force_refresh = false ) {
-		return $this->get_cached_response(
-			self::MATCHES_TRANSIENT,
-			'/competitions/' . WCD_COMPETITION_CODE . '/matches',
-			'matches',
-			$force_refresh
-		);
+	public function get_matches() {
+		return $this->get_local_response( self::MATCHES_TRANSIENT, self::LAST_MATCHES_OPTION );
 	}
 
 	/**
-	 * Returns cached World Cup matches without making an API request.
+	 * Returns locally stored World Cup matches.
+	 *
+	 * This method never performs a remote request.
 	 *
 	 * @return array|false
 	 */
 	public function get_cached_matches() {
-		return get_transient( self::MATCHES_TRANSIENT );
+		$response = $this->get_matches();
+
+		return is_wp_error( $response ) ? false : $response;
 	}
 
 	/**
-	 * Returns World Cup standings, using cache when available.
+	 * Returns locally stored World Cup standings.
 	 *
-	 * @param bool $force_refresh Whether to bypass existing cache.
+	 * This method never performs a remote request.
+	 *
 	 * @return array|WP_Error
 	 */
-	public function get_standings( $force_refresh = false ) {
-		return $this->get_cached_response(
-			self::STANDINGS_TRANSIENT,
-			'/competitions/' . WCD_COMPETITION_CODE . '/standings',
-			'standings',
-			$force_refresh
-		);
+	public function get_standings() {
+		return $this->get_local_response( self::STANDINGS_TRANSIENT, self::LAST_STANDINGS_OPTION );
 	}
 
 	/**
-	 * Deletes all API transients used by the plugin.
+	 * Refreshes all World Cup data from football-data.org.
+	 *
+	 * This is intended for WP-Cron and explicit admin refreshes only.
+	 *
+	 * @param bool $force Deprecated. Request locking is always respected.
+	 * @return bool
+	 */
+	public function refresh_data( $force = false ) {
+		unset( $force );
+
+		if ( get_transient( self::FETCH_LOCK_TRANSIENT ) ) {
+			return false;
+		}
+
+		set_transient( self::FETCH_LOCK_TRANSIENT, 1, MINUTE_IN_SECONDS );
+
+		$success = false;
+
+		try {
+			$matches = $this->request( '/competitions/' . WCD_COMPETITION_CODE . '/matches', 'matches' );
+
+			if ( is_wp_error( $matches ) ) {
+				$this->store_error( $matches );
+			} else {
+				$this->store_successful_response( self::MATCHES_TRANSIENT, self::LAST_MATCHES_OPTION, $matches );
+				$success = true;
+			}
+
+			$standings = $this->request( '/competitions/' . WCD_COMPETITION_CODE . '/standings', 'standings' );
+
+			if ( is_wp_error( $standings ) ) {
+				$this->store_error( $standings );
+			} else {
+				$this->store_successful_response( self::STANDINGS_TRANSIENT, self::LAST_STANDINGS_OPTION, $standings );
+				$success = true;
+			}
+
+			if ( $success ) {
+				update_option( self::LAST_SUCCESS_OPTION, time(), false );
+				delete_option( self::LAST_ERROR_OPTION );
+				update_option( self::DATA_STATUS_OPTION, 'fresh', false );
+			}
+		} finally {
+			delete_transient( self::FETCH_LOCK_TRANSIENT );
+		}
+
+		return $success;
+	}
+
+	/**
+	 * Deletes fresh transients while preserving last successful fallback data.
 	 */
 	public function clear_cache() {
 		delete_transient( self::MATCHES_TRANSIENT );
 		delete_transient( self::STANDINGS_TRANSIENT );
+		delete_transient( self::FETCH_LOCK_TRANSIENT );
+		update_option( self::DATA_STATUS_OPTION, 'stale', false );
 	}
 
 	/**
-	 * Reads from transient cache or fetches fresh data from the API.
+	 * Returns the last successful fetch timestamp.
+	 *
+	 * @return int
+	 */
+	public function get_last_success_time() {
+		return absint( get_option( self::LAST_SUCCESS_OPTION, 0 ) );
+	}
+
+	/**
+	 * Returns the last stored API error for admin display.
+	 *
+	 * @return string
+	 */
+	public function get_last_error() {
+		return (string) get_option( self::LAST_ERROR_OPTION, '' );
+	}
+
+	/**
+	 * Returns cache duration in seconds.
+	 *
+	 * @return int
+	 */
+	public function get_cache_duration_seconds() {
+		$minutes = absint( get_option( 'wcd_cache_duration', 30 ) );
+
+		if ( $minutes < 1 ) {
+			$minutes = 30;
+		}
+
+		return $minutes * MINUTE_IN_SECONDS;
+	}
+
+	/**
+	 * Reads fresh transient data or stale last-successful data.
 	 *
 	 * @param string $transient_key Transient key.
-	 * @param string $endpoint      API endpoint path.
-	 * @param string $data_key      Expected top-level response key.
-	 * @param bool   $force_refresh Whether to bypass existing cache.
+	 * @param string $option_key    Last successful option key.
 	 * @return array|WP_Error
 	 */
-	private function get_cached_response( $transient_key, $endpoint, $data_key, $force_refresh ) {
-		if ( ! $force_refresh ) {
-			$cached = get_transient( $transient_key );
+	private function get_local_response( $transient_key, $option_key ) {
+		$cached = get_transient( $transient_key );
 
-			if ( false !== $cached ) {
-				return $cached;
-			}
+		if ( false !== $cached && is_array( $cached ) ) {
+			$cached['__wcd_cache_status'] = 'fresh';
+			return $cached;
 		}
 
-		$response = $this->request( $endpoint, $data_key );
+		$last_successful = get_option( $option_key, false );
 
-		if ( is_wp_error( $response ) ) {
-			return $response;
+		if ( is_array( $last_successful ) ) {
+			$last_successful['__wcd_cache_status'] = 'stale';
+			return $last_successful;
 		}
 
-		set_transient( $transient_key, $response, $this->get_cache_duration_seconds() );
+		return new WP_Error( 'wcd_data_loading', self::LOADING_MESSAGE );
+	}
 
-		return $response;
+	/**
+	 * Stores fresh cache and last successful fallback data.
+	 *
+	 * @param string $transient_key Transient key.
+	 * @param string $option_key    Last successful option key.
+	 * @param array  $data          API response data.
+	 */
+	private function store_successful_response( $transient_key, $option_key, $data ) {
+		unset( $data['__wcd_cache_status'] );
+
+		set_transient( $transient_key, $data, $this->get_cache_duration_seconds() );
+		update_option( $option_key, $data, false );
+	}
+
+	/**
+	 * Stores a sanitized API error for admins.
+	 *
+	 * @param WP_Error $error Error object.
+	 */
+	private function store_error( WP_Error $error ) {
+		update_option( self::LAST_ERROR_OPTION, $error->get_error_message(), false );
 	}
 
 	/**
@@ -110,11 +218,10 @@ class WCD_API {
 			);
 		}
 
-		$url      = WCD_API_BASE_URL . $endpoint;
 		$response = wp_remote_get(
-			$url,
+			WCD_API_BASE_URL . $endpoint,
 			array(
-				'timeout' => 15,
+				'timeout' => 5,
 				'headers' => array(
 					'X-Auth-Token' => $token,
 				),
@@ -138,7 +245,7 @@ class WCD_API {
 		if ( 429 === $status_code ) {
 			return new WP_Error(
 				'wcd_rate_limited',
-				__( 'football-data.org rate limit reached. Please wait before refreshing World Cup data.', 'world-cup-data' )
+				__( 'football-data.org rate limit reached. Existing cached data was kept.', 'world-cup-data' )
 			);
 		}
 
@@ -153,12 +260,19 @@ class WCD_API {
 			);
 		}
 
+		if ( '' === trim( (string) $body ) ) {
+			return new WP_Error(
+				'wcd_empty_response',
+				__( 'football-data.org returned an empty response.', 'world-cup-data' )
+			);
+		}
+
 		$data = json_decode( $body, true );
 
 		if ( ! is_array( $data ) ) {
 			return new WP_Error(
 				'wcd_invalid_json',
-				__( 'football-data.org returned an invalid response.', 'world-cup-data' )
+				__( 'football-data.org returned an invalid JSON response.', 'world-cup-data' )
 			);
 		}
 
@@ -170,20 +284,5 @@ class WCD_API {
 		}
 
 		return $data;
-	}
-
-	/**
-	 * Returns cache duration in seconds.
-	 *
-	 * @return int
-	 */
-	private function get_cache_duration_seconds() {
-		$minutes = absint( get_option( 'wcd_cache_duration', 30 ) );
-
-		if ( $minutes < 1 ) {
-			$minutes = 30;
-		}
-
-		return $minutes * MINUTE_IN_SECONDS;
 	}
 }
