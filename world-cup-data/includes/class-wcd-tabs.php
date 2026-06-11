@@ -43,11 +43,16 @@ class WCD_Tabs {
 	/**
 	 * Renders tab buttons.
 	 *
-	 * @param string $default_tab Default selected tab.
+	 * @param string $default_tab  Default selected tab.
+	 * @param array  $visible_tabs Optional tab keys to render.
 	 * @return string
 	 */
-	public function render_nav( $default_tab ) {
+	public function render_nav( $default_tab, $visible_tabs = array() ) {
 		$tabs = $this->get_tabs();
+
+		if ( ! empty( $visible_tabs ) ) {
+			$tabs = array_intersect_key( $tabs, array_flip( $visible_tabs ) );
+		}
 
 		ob_start();
 		?>

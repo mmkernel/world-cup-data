@@ -395,27 +395,30 @@ class WCD_Shortcodes {
 		$filters   = new WCD_Filters();
 		$atts      = shortcode_atts(
 			array(
-				'default_tab' => 'upcoming',
+				'default_tab'  => 'upcoming',
+				'display_only' => '',
+				'limit'        => 0,
 			),
 			$atts,
 			'worldcup'
 		);
 
+		$visible_tabs  = $this->parse_display_only_tabs( $atts['display_only'], array_keys( $tabs->get_tabs() ) );
 		$default_tab   = $tabs->sanitize_tab( $atts['default_tab'] );
 		$url_tab       = isset( $_GET['tab'] ) ? $tabs->sanitize_tab( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$selected_tab  = '' !== $url_tab ? $url_tab : $default_tab;
 		$selected_team = isset( $_GET['team'] ) ? sanitize_text_field( wp_unslash( $_GET['team'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$limit         = absint( $atts['limit'] );
+
+		if ( ! in_array( $selected_tab, $visible_tabs, true ) ) {
+			$selected_tab = reset( $visible_tabs );
+		}
 
 		$matches_data = $this->api->get_matches();
 
 		if ( is_wp_error( $matches_data ) ) {
 			return $this->render_notice( $matches_data->get_error_message() );
 		}
-
-		$standings_data = $this->api->get_standings();
-		$standings_view = is_wp_error( $standings_data )
-			? '<p class="wcd-empty">' . esc_html( $standings_data->get_error_message() ) . '</p>'
-			: $standings->render( $standings_data['standings'] ?? array() );
 
 		$all_matches = $matches_data['matches'] ?? array();
 		$teams       = $matches->get_teams( $all_matches );
@@ -424,24 +427,46 @@ class WCD_Shortcodes {
 			$selected_team = '';
 		}
 
-		$panels = array(
-			'upcoming' => $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED', 'TIMED' ) ),
-			'live'     => $matches->render_tab_matches( $all_matches, 'live', array( 'IN_PLAY', 'PAUSED', 'LIVE' ) ),
-			'results'  => $matches->render_tab_matches( $all_matches, 'results', array( 'FINISHED' ) ),
-			'tables'   => $standings_view,
-		);
+		$panels = array();
+
+		foreach ( $visible_tabs as $tab ) {
+			if ( 'upcoming' === $tab ) {
+				$panels['upcoming'] = $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED', 'TIMED' ), $limit );
+			}
+
+			if ( 'live' === $tab ) {
+				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', array( 'IN_PLAY', 'PAUSED', 'LIVE' ), $limit );
+			}
+
+			if ( 'results' === $tab ) {
+				$panels['results'] = $matches->render_tab_matches( $all_matches, 'results', array( 'FINISHED' ), $limit );
+			}
+
+			if ( 'tables' === $tab ) {
+				$standings_data   = $this->api->get_standings();
+				$panels['tables'] = is_wp_error( $standings_data )
+					? '<p class="wcd-empty">' . esc_html( $standings_data->get_error_message() ) . '</p>'
+					: $standings->render( $standings_data['standings'] ?? array() );
+			}
+		}
 
 		ob_start();
 		?>
 		<div class="wcd-wrap wcd-worldcup" data-wcd-worldcup data-active-tab="<?php echo esc_attr( $selected_tab ); ?>">
-			<?php echo $tabs->render_nav( $selected_tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php if ( count( $panels ) > 1 ) : ?>
+				<?php echo $tabs->render_nav( $selected_tab, array_keys( $panels ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php endif; ?>
 			<?php echo $filters->render_team_filter( $teams, $selected_team ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-			<div class="wcd-tab-panels">
-				<?php foreach ( $panels as $key => $content ) : ?>
-					<?php echo $tabs->render_panel( $key, $content, $selected_tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				<?php endforeach; ?>
-			</div>
+			<?php if ( count( $panels ) > 1 ) : ?>
+				<div class="wcd-tab-panels">
+					<?php foreach ( $panels as $key => $content ) : ?>
+						<?php echo $tabs->render_panel( $key, $content, $selected_tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php endforeach; ?>
+				</div>
+			<?php else : ?>
+				<?php echo reset( $panels ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php endif; ?>
 
 			<?php echo $this->render_credit(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
@@ -493,6 +518,32 @@ class WCD_Shortcodes {
 			esc_url( 'https://masterymesh.com' ),
 			esc_html__( 'MasteryMesh', 'world-cup-data' )
 		);
+	}
+
+	/**
+	 * Parses the optional display_only tab list.
+	 *
+	 * @param string $display_only Comma-separated tab keys.
+	 * @param array  $valid_tabs    Valid tab keys in display order.
+	 * @return array
+	 */
+	private function parse_display_only_tabs( $display_only, $valid_tabs ) {
+		$display_only = (string) $display_only;
+
+		if ( '' === trim( $display_only ) ) {
+			return $valid_tabs;
+		}
+
+		$requested = array_filter(
+			array_map(
+				'sanitize_key',
+				array_map( 'trim', explode( ',', $display_only ) )
+			)
+		);
+
+		$selected = array_values( array_intersect( $valid_tabs, $requested ) );
+
+		return empty( $selected ) ? $valid_tabs : $selected;
 	}
 
 	/**

@@ -341,6 +341,14 @@ class WCD_Admin {
 						<td><?php echo esc_html__( 'Opens the interface on a specific tab. Supported values: upcoming, live, results, tables.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
+						<td><code>[worldcup display_only="upcoming,live"]</code></td>
+						<td><?php echo esc_html__( 'Renders only selected tabs. Supported values: upcoming, live, results, tables.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
+						<td><code>[worldcup display_only="upcoming,live,results" limit="5"]</code></td>
+						<td><?php echo esc_html__( 'Limits Upcoming, Live, and Results match lists. Tables ignore the limit.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
 						<td><code>[worldcup_today]</code></td>
 						<td><?php echo esc_html__( 'Shows only today\'s upcoming and live World Cup matches from cached data.', 'world-cup-data' ); ?></td>
 					</tr>

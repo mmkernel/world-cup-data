@@ -166,6 +166,43 @@ Example:
 
 ---
 
+## Show Only Specific Tabs
+
+Use `display_only` with a comma-separated list of tabs.
+
+```text
+[worldcup display_only="upcoming"]
+[worldcup display_only="upcoming,live"]
+```
+
+Supported values:
+
+- upcoming
+- live
+- results
+- tables
+
+When only one tab is displayed, tab navigation is hidden and the content is shown directly.
+
+---
+
+## Limit Match Lists
+
+Use `limit` to cap Upcoming, Live, and Results matches. Tables ignore the limit.
+
+```text
+[worldcup display_only="upcoming,live,results" limit="5"]
+[worldcup display_only="results" limit="10"]
+```
+
+Example output for `[worldcup display_only="upcoming,live,results" limit="5"]`:
+
+- Upcoming: max 5 matches
+- Live: max 5 matches
+- Results: max 5 matches
+
+---
+
 ## Today's Matches
 
 Displays only today's World Cup matches.

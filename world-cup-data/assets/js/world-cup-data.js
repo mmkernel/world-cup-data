@@ -52,6 +52,32 @@
 		var selected = normalize(team);
 		var panels = root.querySelectorAll('[data-wcd-panel]');
 
+		if (!panels.length) {
+			var activeTab = root.getAttribute('data-active-tab') || 'upcoming';
+			var directCards = root.querySelectorAll('[data-wcd-match-card]');
+			var directVisibleCount = 0;
+			var shouldFilterDirect = activeTab === 'upcoming' || activeTab === 'results';
+
+			directCards.forEach(function (card) {
+				var teams = normalize(card.getAttribute('data-teams'));
+				var visible = !shouldFilterDirect || !selected || teams.indexOf(selected) !== -1;
+				card.hidden = !visible;
+
+				if (visible) {
+					directVisibleCount += 1;
+				}
+			});
+
+			var directEmpty = root.querySelector('[data-wcd-filter-empty]');
+
+			if (directEmpty) {
+				directEmpty.hidden = !shouldFilterDirect || !selected || directVisibleCount > 0 || directCards.length === 0;
+			}
+
+			setUrlParam('team', team || '');
+			return;
+		}
+
 		panels.forEach(function (panel) {
 			var panelName = panel.getAttribute('data-wcd-panel');
 			var cards = panel.querySelectorAll('[data-wcd-match-card]');
