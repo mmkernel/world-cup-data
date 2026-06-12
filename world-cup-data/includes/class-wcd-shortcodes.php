@@ -425,6 +425,19 @@ class WCD_Shortcodes {
 
 		$all_matches = $matches_data['matches'] ?? array();
 		$teams       = $matches->get_teams( $all_matches );
+		$live_statuses = array( 'IN_PLAY', 'PAUSED', 'LIVE' );
+
+		if ( ! $matches->has_matches_with_status( $all_matches, $live_statuses ) ) {
+			$visible_tabs = array_values( array_diff( $visible_tabs, array( 'live' ) ) );
+		}
+
+		if ( empty( $visible_tabs ) ) {
+			return $this->render_notice( wcd_get_text( 'no_matches' ) );
+		}
+
+		if ( ! in_array( $selected_tab, $visible_tabs, true ) ) {
+			$selected_tab = reset( $visible_tabs );
+		}
 
 		if ( '' !== $selected_team && ! in_array( $selected_team, $teams, true ) ) {
 			$selected_team = '';
@@ -438,7 +451,7 @@ class WCD_Shortcodes {
 			}
 
 			if ( 'live' === $tab ) {
-				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', array( 'IN_PLAY', 'PAUSED', 'LIVE' ), $limit );
+				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', $live_statuses, $limit );
 			}
 
 			if ( 'results' === $tab ) {

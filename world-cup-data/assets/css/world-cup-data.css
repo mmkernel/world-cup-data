@@ -177,6 +177,22 @@
 	vertical-align: middle;
 }
 
+.wcd-wrap .wcd-goal-scorers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.75rem;
+	margin: 0.75rem 0 0;
+	padding: 0;
+	color: #52606d;
+	font-size: 0.9rem;
+	list-style: none;
+}
+
+.wcd-wrap .wcd-goal-scorers li {
+	margin: 0;
+	padding: 0;
+}
+
 .wcd-wrap .wcd-team-flag,
 .wcd-today-wrap .wcd-team-flag {
 	display: inline-block;
