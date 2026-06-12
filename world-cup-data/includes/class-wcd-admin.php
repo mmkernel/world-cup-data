@@ -380,6 +380,10 @@ class WCD_Admin {
 						<td><?php echo esc_html__( 'Limits Upcoming, Live, and Results match lists. Tables ignore the limit.', 'world-cup-data' ); ?></td>
 					</tr>
 					<tr>
+						<td><code>[worldcup lazy="yes"]</code></td>
+						<td><?php echo esc_html__( 'Loads the full interface after page load using stored data only.', 'world-cup-data' ); ?></td>
+					</tr>
+					<tr>
 						<td><code>[worldcup_today]</code></td>
 						<td><?php echo esc_html__( 'Shows only today\'s upcoming and live World Cup matches from cached data.', 'world-cup-data' ); ?></td>
 					</tr>

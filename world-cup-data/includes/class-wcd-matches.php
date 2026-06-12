@@ -38,6 +38,11 @@ class WCD_Matches {
 				<?php echo $this->render_card( $match, $tab, $limit > 0 && $index >= $limit ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endforeach; ?>
 		</div>
+		<?php if ( $limit > 0 && count( $filtered ) > $limit ) : ?>
+			<button type="button" class="wcd-load-more" data-wcd-load-more data-wcd-load-step="<?php echo esc_attr( $limit ); ?>">
+				<?php echo esc_html__( 'Load more', 'world-cup-data' ); ?>
+			</button>
+		<?php endif; ?>
 		<p class="wcd-empty wcd-empty-filtered" data-wcd-filter-empty hidden><?php echo esc_html( wcd_get_text( 'no_team_matches' ) ); ?></p>
 		<?php
 		return ob_get_clean();
@@ -66,6 +71,17 @@ class WCD_Matches {
 		natcasesort( $teams );
 
 		return array_values( $teams );
+	}
+
+	/**
+	 * Returns whether any matches have one of the given statuses.
+	 *
+	 * @param array $matches  Match data.
+	 * @param array $statuses Allowed statuses.
+	 * @return bool
+	 */
+	public function has_matches_with_status( $matches, $statuses ) {
+		return ! empty( $this->filter_by_status( $matches, $statuses ) );
 	}
 
 	/**
@@ -251,16 +267,19 @@ class WCD_Matches {
 				</div>
 			</div>
 
-			<div class="wcd-card-meta">
-				<span><?php echo esc_html( $date_parts['date'] ); ?></span>
-				<span><?php echo esc_html( $date_parts['time'] ); ?></span>
-				<?php if ( '' !== $stage ) : ?>
-					<span><?php echo esc_html( $stage ); ?></span>
-				<?php endif; ?>
-				<?php if ( 'SCHEDULED' !== $status ) : ?>
-					<span><?php echo esc_html( wcd_get_text( 'status' ) . ': ' . $this->format_status( $status ) ); ?></span>
-				<?php endif; ?>
-			</div>
+			<?php if ( 'upcoming' === $tab ) : ?>
+				<div class="wcd-card-meta">
+					<span><?php echo esc_html( $date_parts['date'] ); ?></span>
+					<span><?php echo esc_html( $date_parts['time'] ); ?></span>
+					<?php if ( '' !== $stage ) : ?>
+						<span><?php echo esc_html( $stage ); ?></span>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( 'results' === $tab ) : ?>
+				<?php echo $this->render_goal_scorers( $match ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php endif; ?>
 		</article>
 		<?php
 		return ob_get_clean();
@@ -385,6 +404,84 @@ class WCD_Matches {
 		}
 
 		return ucwords( strtolower( str_replace( '_', ' ', $status ) ) );
+	}
+
+	/**
+	 * Renders goal scorer details when the cached API response includes them.
+	 *
+	 * @param array $match Match data.
+	 * @return string
+	 */
+	private function render_goal_scorers( $match ) {
+		$goals = $match['goals'] ?? $match['score']['goals'] ?? array();
+
+		if ( empty( $goals ) || ! is_array( $goals ) ) {
+			return '';
+		}
+
+		ob_start();
+		?>
+		<ul class="wcd-goal-scorers">
+			<?php foreach ( $goals as $goal ) : ?>
+				<?php $goal_text = $this->format_goal_scorer( $goal ); ?>
+				<?php if ( '' !== $goal_text ) : ?>
+					<li><?php echo esc_html( $goal_text ); ?></li>
+				<?php endif; ?>
+			<?php endforeach; ?>
+		</ul>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Formats one goal event.
+	 *
+	 * @param array $goal Goal data.
+	 * @return string
+	 */
+	private function format_goal_scorer( $goal ) {
+		if ( ! is_array( $goal ) ) {
+			return '';
+		}
+
+		$minute = $goal['minute'] ?? $goal['matchMinute'] ?? '';
+
+		if ( isset( $goal['injuryTime'] ) && '' !== (string) $goal['injuryTime'] ) {
+			$minute = '' === (string) $minute
+				? (string) $goal['injuryTime']
+				: $minute . '+' . $goal['injuryTime'];
+		}
+
+		$player = $goal['scorer']['name'] ?? $goal['player']['name'] ?? $goal['playerName'] ?? $goal['name'] ?? $goal['scorer'] ?? $goal['player'] ?? '';
+		$team   = $goal['team']['name'] ?? $goal['teamName'] ?? '';
+
+		if ( is_array( $player ) ) {
+			$player = '';
+		}
+
+		if ( is_array( $team ) ) {
+			$team = '';
+		}
+
+		$parts = array();
+
+		if ( '' !== (string) $minute ) {
+			$parts[] = $minute . "'";
+		}
+
+		if ( '' !== (string) $player ) {
+			$parts[] = (string) $player;
+		}
+
+		if ( '' !== (string) $team ) {
+			$parts[] = '(' . $team . ')';
+		}
+
+		if ( ! empty( $goal['type'] ) && is_string( $goal['type'] ) && 'REGULAR' !== strtoupper( $goal['type'] ) ) {
+			$parts[] = '[' . ucwords( strtolower( str_replace( '_', ' ', $goal['type'] ) ) ) . ']';
+		}
+
+		return implode( ' ', $parts );
 	}
 
 	/**

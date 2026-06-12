@@ -85,6 +85,7 @@ class WCD_API {
 			if ( is_wp_error( $matches ) ) {
 				$this->store_error( $matches );
 			} else {
+				$matches = $this->enrich_matches_with_goal_events( $matches );
 				$this->store_successful_response( self::MATCHES_TRANSIENT, self::LAST_MATCHES_OPTION, $matches );
 				$success = true;
 			}
@@ -108,6 +109,55 @@ class WCD_API {
 		}
 
 		return $success;
+	}
+
+	/**
+	 * Adds scorer/minute events to finished matches when football-data.org provides match details.
+	 *
+	 * @param array $matches Matches response.
+	 * @return array
+	 */
+	private function enrich_matches_with_goal_events( $matches ) {
+		if ( empty( $matches['matches'] ) || ! is_array( $matches['matches'] ) ) {
+			return $matches;
+		}
+
+		foreach ( $matches['matches'] as $index => $match ) {
+			if ( ! $this->should_fetch_goal_events( $match ) ) {
+				continue;
+			}
+
+			$details = $this->request( '/matches/' . absint( $match['id'] ) );
+
+			if ( is_wp_error( $details ) || empty( $details['goals'] ) || ! is_array( $details['goals'] ) ) {
+				continue;
+			}
+
+			$matches['matches'][ $index ]['goals'] = $details['goals'];
+		}
+
+		return $matches;
+	}
+
+	/**
+	 * Returns whether a finished match needs goal-event enrichment.
+	 *
+	 * @param array $match Match data.
+	 * @return bool
+	 */
+	private function should_fetch_goal_events( $match ) {
+		if ( empty( $match['id'] ) || 'FINISHED' !== ( $match['status'] ?? '' ) ) {
+			return false;
+		}
+
+		if ( ! empty( $match['goals'] ) && is_array( $match['goals'] ) ) {
+			return false;
+		}
+
+		$home_score = $match['score']['fullTime']['home'] ?? 0;
+		$away_score = $match['score']['fullTime']['away'] ?? 0;
+
+		return ( absint( $home_score ) + absint( $away_score ) ) > 0;
 	}
 
 	/**
@@ -205,10 +255,10 @@ class WCD_API {
 	 * Performs an authenticated API request.
 	 *
 	 * @param string $endpoint API endpoint path.
-	 * @param string $data_key Expected top-level response key.
+	 * @param string $data_key Expected top-level response key. Empty means return the decoded response.
 	 * @return array|WP_Error
 	 */
-	private function request( $endpoint, $data_key ) {
+	private function request( $endpoint, $data_key = '' ) {
 		$token = trim( (string) get_option( 'wcd_api_token', '' ) );
 
 		if ( '' === $token ) {
@@ -274,6 +324,10 @@ class WCD_API {
 				'wcd_invalid_json',
 				__( 'football-data.org returned an invalid JSON response.', 'world-cup-data' )
 			);
+		}
+
+		if ( '' === $data_key ) {
+			return $data;
 		}
 
 		if ( empty( $data[ $data_key ] ) || ! is_array( $data[ $data_key ] ) ) {

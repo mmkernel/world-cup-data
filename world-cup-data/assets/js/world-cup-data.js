@@ -21,6 +21,32 @@
 		window.history.replaceState({}, '', url.toString());
 	}
 
+	function getVisibleCards(cards) {
+		var visibleCards = [];
+
+		cards.forEach(function (card) {
+			if (!card.hidden) {
+				visibleCards.push(card);
+			}
+		});
+
+		return visibleCards;
+	}
+
+	function updateLoadMoreButton(scope, selected) {
+		var list = scope.querySelector('[data-wcd-match-list]');
+		var button = scope.querySelector('[data-wcd-load-more]');
+
+		if (!list || !button) {
+			return;
+		}
+
+		var cards = scope.querySelectorAll('[data-wcd-match-card]');
+		var limit = parseInt(list.getAttribute('data-wcd-limit'), 10) || 0;
+
+		button.hidden = !!selected || !limit || getVisibleCards(cards).length >= cards.length;
+	}
+
 	function setActiveTab(root, tabName) {
 		var buttons = root.querySelectorAll('[data-wcd-tab]');
 		var panels = root.querySelectorAll('[data-wcd-panel]');
@@ -83,6 +109,8 @@
 				directEmpty.hidden = !shouldFilterDirect || !selected || directVisibleCount > 0 || directCards.length === 0;
 			}
 
+			updateLoadMoreButton(root, selected);
+
 			setUrlParam('team', team || '');
 			return;
 		}
@@ -117,12 +145,39 @@
 			if (empty) {
 				empty.hidden = !shouldFilter || !selected || visibleCount > 0 || cards.length === 0;
 			}
+
+			updateLoadMoreButton(panel, selected);
 		});
 
 		setUrlParam('team', team || '');
 	}
 
+	function initLoadMore(root) {
+		root.querySelectorAll('[data-wcd-load-more]').forEach(function (button) {
+			button.addEventListener('click', function () {
+				var panel = button.closest('[data-wcd-panel]') || root;
+				var list = panel.querySelector('[data-wcd-match-list]');
+				var filter = root.querySelector('[data-wcd-team-filter]');
+				var step = parseInt(button.getAttribute('data-wcd-load-step'), 10) || 10;
+				var currentLimit = list ? parseInt(list.getAttribute('data-wcd-limit'), 10) || 0 : 0;
+
+				if (!list || !currentLimit) {
+					return;
+				}
+
+				list.setAttribute('data-wcd-limit', currentLimit + step);
+				applyTeamFilter(root, filter ? filter.value : '');
+			});
+		});
+	}
+
 	function initWorldCup(root) {
+		if (root.getAttribute('data-wcd-initialized') === 'true') {
+			return;
+		}
+
+		root.setAttribute('data-wcd-initialized', 'true');
+
 		var tabs = root.querySelectorAll('[data-wcd-tab]');
 		var filter = root.querySelector('[data-wcd-team-filter]');
 		var activeTab = root.getAttribute('data-active-tab') || 'upcoming';
@@ -161,9 +216,90 @@
 
 			applyTeamFilter(root, filter.value);
 		}
+
+		initLoadMore(root);
+	}
+
+	function getLazyConfig() {
+		if (!window.wcdWorldCupData || !window.wcdWorldCupData.ajaxUrl || !window.wcdWorldCupData.nonce) {
+			return null;
+		}
+
+		return window.wcdWorldCupData;
+	}
+
+	function initLazyWorldCup(root) {
+		var config = getLazyConfig();
+		var status = root.querySelector('[data-wcd-lazy-status]');
+		var atts = {};
+
+		if (!config) {
+			if (status) {
+				status.textContent = 'Could not load World Cup data. Please try again.';
+			}
+
+			root.classList.add('wcd-lazy-error');
+			return;
+		}
+
+		try {
+			atts = JSON.parse(root.getAttribute('data-wcd-atts') || '{}');
+		} catch (error) {
+			atts = {};
+		}
+
+		if (status) {
+			status.textContent = config.loadingText || 'Loading World Cup data...';
+		}
+
+		var body = new URLSearchParams();
+		body.append('action', 'wcd_lazy_worldcup');
+		body.append('nonce', config.nonce);
+
+		Object.keys(atts).forEach(function (key) {
+			body.append('atts[' + key + ']', atts[key]);
+		});
+
+		fetch(config.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+			},
+			body: body.toString()
+		})
+			.then(function (response) {
+				if (!response.ok) {
+					throw new Error('Request failed');
+				}
+
+				return response.json();
+			})
+			.then(function (payload) {
+				if (!payload || !payload.success || !payload.data || !payload.data.html) {
+					throw new Error('Invalid response');
+				}
+
+				root.insertAdjacentHTML('afterend', payload.data.html);
+
+				var replacement = root.nextElementSibling;
+				root.parentNode.removeChild(root);
+
+				if (replacement && replacement.matches('[data-wcd-worldcup]')) {
+					initWorldCup(replacement);
+				}
+			})
+			.catch(function () {
+				if (status) {
+					status.textContent = config.errorText || 'Could not load World Cup data. Please try again.';
+				}
+
+				root.classList.add('wcd-lazy-error');
+			});
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
 		document.querySelectorAll('[data-wcd-worldcup]').forEach(initWorldCup);
+		document.querySelectorAll('[data-wcd-worldcup-lazy]').forEach(initLazyWorldCup);
 	});
 }());

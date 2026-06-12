@@ -357,6 +357,9 @@ class WCD_Shortcodes {
 		add_shortcode( 'worldcup_matches', array( $this, 'render_worldcup_shortcode' ) );
 		add_shortcode( 'worldcup_results', array( $this, 'render_results_legacy_shortcode' ) );
 		add_shortcode( 'worldcup_standings', array( $this, 'render_standings_legacy_shortcode' ) );
+
+		add_action( 'wp_ajax_wcd_lazy_worldcup', array( $this, 'handle_lazy_worldcup_request' ) );
+		add_action( 'wp_ajax_nopriv_wcd_lazy_worldcup', array( $this, 'handle_lazy_worldcup_request' ) );
 	}
 
 	/**
@@ -389,19 +392,76 @@ class WCD_Shortcodes {
 		wp_enqueue_style( 'wcd-world-cup-data' );
 		wp_enqueue_script( 'wcd-world-cup-data' );
 
-		$tabs      = new WCD_Tabs();
-		$matches   = new WCD_Matches();
-		$standings = new WCD_Standings();
-		$filters   = new WCD_Filters();
-		$atts      = shortcode_atts(
+		$atts = $this->normalize_worldcup_atts( $atts );
+
+		if ( 'yes' === $atts['lazy'] ) {
+			$this->localize_lazy_assets();
+
+			return $this->render_lazy_placeholder( $atts );
+		}
+
+		return $this->render_worldcup_markup( $atts );
+	}
+
+	/**
+	 * Handles lazy [worldcup] rendering over admin-ajax.
+	 */
+	public function handle_lazy_worldcup_request() {
+		check_ajax_referer( 'wcd_lazy_worldcup', 'nonce' );
+
+		$raw_atts = isset( $_POST['atts'] ) && is_array( $_POST['atts'] )
+			? wp_unslash( $_POST['atts'] )
+			: array();
+
+		$atts          = $this->normalize_worldcup_atts( $raw_atts );
+		$atts['lazy']  = 'no';
+		$atts['limit'] = 10;
+
+		wp_send_json_success(
+			array(
+				'html' => $this->render_worldcup_markup( $atts ),
+			)
+		);
+	}
+
+	/**
+	 * Normalizes [worldcup] shortcode attributes.
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return array
+	 */
+	private function normalize_worldcup_atts( $atts ) {
+		$atts = shortcode_atts(
 			array(
 				'default_tab'  => 'upcoming',
 				'display_only' => '',
 				'limit'        => 0,
+				'lazy'         => 'no',
 			),
 			$atts,
 			'worldcup'
 		);
+
+		$atts['default_tab']  = sanitize_key( $atts['default_tab'] );
+		$atts['display_only'] = sanitize_text_field( $atts['display_only'] );
+		$atts['limit']        = absint( $atts['limit'] );
+		$atts['lazy']         = 'yes' === strtolower( sanitize_text_field( $atts['lazy'] ) ) ? 'yes' : 'no';
+
+		return $atts;
+	}
+
+	/**
+	 * Renders the full [worldcup] interface from local stored data.
+	 *
+	 * @param array $atts Normalized shortcode attributes.
+	 * @return string
+	 */
+	private function render_worldcup_markup( $atts ) {
+
+		$tabs      = new WCD_Tabs();
+		$matches   = new WCD_Matches();
+		$standings = new WCD_Standings();
+		$filters   = new WCD_Filters();
 
 		$visible_tabs  = $this->parse_display_only_tabs( $atts['display_only'], array_keys( $tabs->get_tabs() ) );
 		$default_tab   = $tabs->sanitize_tab( $atts['default_tab'] );
@@ -425,6 +485,19 @@ class WCD_Shortcodes {
 
 		$all_matches = $matches_data['matches'] ?? array();
 		$teams       = $matches->get_teams( $all_matches );
+		$live_statuses = array( 'IN_PLAY', 'PAUSED', 'LIVE' );
+
+		if ( ! $matches->has_matches_with_status( $all_matches, $live_statuses ) ) {
+			$visible_tabs = array_values( array_diff( $visible_tabs, array( 'live' ) ) );
+		}
+
+		if ( empty( $visible_tabs ) ) {
+			return $this->render_notice( wcd_get_text( 'no_matches' ) );
+		}
+
+		if ( ! in_array( $selected_tab, $visible_tabs, true ) ) {
+			$selected_tab = reset( $visible_tabs );
+		}
 
 		if ( '' !== $selected_team && ! in_array( $selected_team, $teams, true ) ) {
 			$selected_team = '';
@@ -438,7 +511,7 @@ class WCD_Shortcodes {
 			}
 
 			if ( 'live' === $tab ) {
-				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', array( 'IN_PLAY', 'PAUSED', 'LIVE' ), $limit );
+				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', $live_statuses, $limit );
 			}
 
 			if ( 'results' === $tab ) {
@@ -476,6 +549,47 @@ class WCD_Shortcodes {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Passes lazy loading settings to the frontend script.
+	 */
+	private function localize_lazy_assets() {
+		wp_localize_script(
+			'wcd-world-cup-data',
+			'wcdWorldCupData',
+			array(
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'nonce'       => wp_create_nonce( 'wcd_lazy_worldcup' ),
+				'loadingText' => __( 'Loading World Cup data...', 'world-cup-data' ),
+				'errorText'   => __( 'Could not load World Cup data. Please try again.', 'world-cup-data' ),
+			)
+		);
+	}
+
+	/**
+	 * Renders the lightweight lazy shortcode placeholder.
+	 *
+	 * @param array $atts Normalized shortcode attributes.
+	 * @return string
+	 */
+	private function render_lazy_placeholder( $atts ) {
+		$payload = wp_json_encode(
+			array(
+				'default_tab'  => $atts['default_tab'],
+				'display_only' => $atts['display_only'],
+			)
+		);
+
+		if ( false === $payload ) {
+			$payload = '{}';
+		}
+
+		return sprintf(
+			'<div class="wcd-wrap wcd-worldcup wcd-worldcup-lazy" data-wcd-worldcup-lazy data-wcd-atts="%s"><p class="wcd-notice" data-wcd-lazy-status>%s</p></div>',
+			esc_attr( $payload ),
+			esc_html__( 'Loading World Cup data...', 'world-cup-data' )
+		);
 	}
 
 	/**

@@ -203,6 +203,19 @@ Example output for `[worldcup display_only="upcoming,live,results" limit="5"]`:
 
 ---
 
+## Lazy Load Full Interface
+
+Use `lazy="yes"` to output a lightweight placeholder first and load the full interface after page load from stored data only.
+
+```text
+[worldcup lazy="yes"]
+[worldcup lazy="yes" display_only="upcoming,live,results"]
+```
+
+Lazy mode starts with 10 matches per match tab and includes a Load more button.
+
+---
+
 ## Today's Matches
 
 Displays only today's World Cup matches.

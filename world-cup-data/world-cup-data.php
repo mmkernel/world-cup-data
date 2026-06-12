@@ -55,9 +55,8 @@ add_filter( 'cron_schedules', 'wcd_register_cron_schedule' );
 function wcd_init_plugin() {
 	$api = new WCD_API();
 
-	wcd_schedule_refresh_event();
-
 	if ( is_admin() ) {
+		wcd_schedule_refresh_event();
 		new WCD_Admin( $api );
 	}
 

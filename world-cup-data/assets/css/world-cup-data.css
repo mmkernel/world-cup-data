@@ -177,6 +177,22 @@
 	vertical-align: middle;
 }
 
+.wcd-wrap .wcd-goal-scorers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.75rem;
+	margin: 0.75rem 0 0;
+	padding: 0;
+	color: #52606d;
+	font-size: 0.9rem;
+	list-style: none;
+}
+
+.wcd-wrap .wcd-goal-scorers li {
+	margin: 0;
+	padding: 0;
+}
+
 .wcd-wrap .wcd-team-flag,
 .wcd-today-wrap .wcd-team-flag {
 	display: inline-block;
@@ -247,6 +263,40 @@
 	border-left: 4px solid #627d98;
 	background: #f5f7fa;
 	padding: 0.85rem 1rem;
+}
+
+.wcd-wrap .wcd-load-more {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 1rem;
+	border: 1px solid #ccd6e0;
+	border-radius: 8px;
+	background: #fff;
+	color: #334e68;
+	cursor: pointer;
+	padding: 0.55rem 0.9rem;
+	font: inherit;
+	font-weight: 700;
+}
+
+.wcd-wrap .wcd-load-more:hover,
+.wcd-wrap .wcd-load-more:focus {
+	border-color: #9fb3c8;
+	color: #102a43;
+	outline: none;
+}
+
+.wcd-wrap .wcd-load-more:focus-visible {
+	box-shadow: 0 0 0 2px #4c8bf5;
+}
+
+.wcd-worldcup-lazy .wcd-notice {
+	border-left-color: #1f6feb;
+}
+
+.wcd-worldcup-lazy.wcd-lazy-error .wcd-notice {
+	border-left-color: #b42318;
 }
 
 .wcd-today-wrap {
