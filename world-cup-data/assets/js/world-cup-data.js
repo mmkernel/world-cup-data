@@ -21,32 +21,6 @@
 		window.history.replaceState({}, '', url.toString());
 	}
 
-	function getVisibleCards(cards) {
-		var visibleCards = [];
-
-		cards.forEach(function (card) {
-			if (!card.hidden) {
-				visibleCards.push(card);
-			}
-		});
-
-		return visibleCards;
-	}
-
-	function updateLoadMoreButton(scope, selected) {
-		var list = scope.querySelector('[data-wcd-match-list]');
-		var button = scope.querySelector('[data-wcd-load-more]');
-
-		if (!list || !button) {
-			return;
-		}
-
-		var cards = scope.querySelectorAll('[data-wcd-match-card]');
-		var limit = parseInt(list.getAttribute('data-wcd-limit'), 10) || 0;
-
-		button.hidden = !!selected || !limit || getVisibleCards(cards).length >= cards.length;
-	}
-
 	function setActiveTab(root, tabName) {
 		var buttons = root.querySelectorAll('[data-wcd-tab]');
 		var panels = root.querySelectorAll('[data-wcd-panel]');
@@ -109,8 +83,6 @@
 				directEmpty.hidden = !shouldFilterDirect || !selected || directVisibleCount > 0 || directCards.length === 0;
 			}
 
-			updateLoadMoreButton(root, selected);
-
 			setUrlParam('team', team || '');
 			return;
 		}
@@ -146,29 +118,9 @@
 				empty.hidden = !shouldFilter || !selected || visibleCount > 0 || cards.length === 0;
 			}
 
-			updateLoadMoreButton(panel, selected);
 		});
 
 		setUrlParam('team', team || '');
-	}
-
-	function initLoadMore(root) {
-		root.querySelectorAll('[data-wcd-load-more]').forEach(function (button) {
-			button.addEventListener('click', function () {
-				var panel = button.closest('[data-wcd-panel]') || root;
-				var list = panel.querySelector('[data-wcd-match-list]');
-				var filter = root.querySelector('[data-wcd-team-filter]');
-				var step = parseInt(button.getAttribute('data-wcd-load-step'), 10) || 10;
-				var currentLimit = list ? parseInt(list.getAttribute('data-wcd-limit'), 10) || 0 : 0;
-
-				if (!list || !currentLimit) {
-					return;
-				}
-
-				list.setAttribute('data-wcd-limit', currentLimit + step);
-				applyTeamFilter(root, filter ? filter.value : '');
-			});
-		});
 	}
 
 	function initWorldCup(root) {
@@ -217,7 +169,6 @@
 			applyTeamFilter(root, filter.value);
 		}
 
-		initLoadMore(root);
 	}
 
 	function getLazyConfig() {

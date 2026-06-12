@@ -212,7 +212,7 @@ Use `lazy="yes"` to output a lightweight placeholder first and load the full int
 [worldcup lazy="yes" display_only="upcoming,live,results"]
 ```
 
-Lazy mode starts with 10 matches per match tab and includes a Load more button.
+Lazy mode starts with 10 matches per match tab.
 
 ---
 
