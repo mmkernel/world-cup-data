@@ -452,7 +452,7 @@ class WCD_Matches {
 				: $minute . '+' . $goal['injuryTime'];
 		}
 
-		$player = $goal['scorer']['name'] ?? $goal['player']['name'] ?? $goal['playerName'] ?? $goal['scorer'] ?? '';
+		$player = $goal['scorer']['name'] ?? $goal['player']['name'] ?? $goal['playerName'] ?? $goal['name'] ?? $goal['scorer'] ?? $goal['player'] ?? '';
 		$team   = $goal['team']['name'] ?? $goal['teamName'] ?? '';
 
 		if ( is_array( $player ) ) {
@@ -475,6 +475,10 @@ class WCD_Matches {
 
 		if ( '' !== (string) $team ) {
 			$parts[] = '(' . $team . ')';
+		}
+
+		if ( ! empty( $goal['type'] ) && is_string( $goal['type'] ) && 'REGULAR' !== strtoupper( $goal['type'] ) ) {
+			$parts[] = '[' . ucwords( strtolower( str_replace( '_', ' ', $goal['type'] ) ) ) . ']';
 		}
 
 		return implode( ' ', $parts );
