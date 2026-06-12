@@ -38,6 +38,11 @@ class WCD_Matches {
 				<?php echo $this->render_card( $match, $tab, $limit > 0 && $index >= $limit ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endforeach; ?>
 		</div>
+		<?php if ( $limit > 0 && count( $filtered ) > $limit ) : ?>
+			<button type="button" class="wcd-load-more" data-wcd-load-more data-wcd-load-step="<?php echo esc_attr( $limit ); ?>">
+				<?php echo esc_html__( 'Load more', 'world-cup-data' ); ?>
+			</button>
+		<?php endif; ?>
 		<p class="wcd-empty wcd-empty-filtered" data-wcd-filter-empty hidden><?php echo esc_html( wcd_get_text( 'no_team_matches' ) ); ?></p>
 		<?php
 		return ob_get_clean();

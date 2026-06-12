@@ -265,6 +265,40 @@
 	padding: 0.85rem 1rem;
 }
 
+.wcd-wrap .wcd-load-more {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 1rem;
+	border: 1px solid #ccd6e0;
+	border-radius: 8px;
+	background: #fff;
+	color: #334e68;
+	cursor: pointer;
+	padding: 0.55rem 0.9rem;
+	font: inherit;
+	font-weight: 700;
+}
+
+.wcd-wrap .wcd-load-more:hover,
+.wcd-wrap .wcd-load-more:focus {
+	border-color: #9fb3c8;
+	color: #102a43;
+	outline: none;
+}
+
+.wcd-wrap .wcd-load-more:focus-visible {
+	box-shadow: 0 0 0 2px #4c8bf5;
+}
+
+.wcd-worldcup-lazy .wcd-notice {
+	border-left-color: #1f6feb;
+}
+
+.wcd-worldcup-lazy.wcd-lazy-error .wcd-notice {
+	border-left-color: #b42318;
+}
+
 .wcd-today-wrap {
 	margin: 1.25rem 0;
 	color: #17202a;
