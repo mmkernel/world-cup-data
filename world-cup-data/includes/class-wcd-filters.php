@@ -17,7 +17,7 @@ class WCD_Filters {
 	/**
 	 * Renders the team filter.
 	 *
-	 * @param array  $teams         Team names.
+	 * @param array  $teams         Team data.
 	 * @param string $selected_team Selected team.
 	 * @return string
 	 */
@@ -29,8 +29,13 @@ class WCD_Filters {
 			<select id="wcd-team-filter" class="wcd-team-filter" data-wcd-team-filter>
 				<option value=""><?php echo esc_html( wcd_get_text( 'all_teams' ) ); ?></option>
 				<?php foreach ( $teams as $team ) : ?>
-					<option value="<?php echo esc_attr( $team ); ?>" <?php selected( $selected_team, $team ); ?>>
-						<?php echo esc_html( $team ); ?>
+					<?php
+					$team_name = is_array( $team ) ? ( $team['name'] ?? '' ) : $team;
+					$flag      = is_array( $team ) ? ( $team['flag'] ?? '' ) : '';
+					$label     = '' !== $flag ? $flag . ' ' . $team_name : $team_name;
+					?>
+					<option value="<?php echo esc_attr( $team_name ); ?>" <?php selected( $selected_team, $team_name ); ?>>
+						<?php echo esc_html( $label ); ?>
 					</option>
 				<?php endforeach; ?>
 			</select>

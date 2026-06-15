@@ -28,10 +28,6 @@ class WCD_Matches {
 		$filtered = $this->sort_matches( $this->filter_by_status( $matches, $statuses ), $tab );
 		$limit    = absint( $limit );
 
-		if ( $limit > 0 ) {
-			$filtered = array_slice( $filtered, 0, $limit );
-		}
-
 		$rendered = count( $filtered );
 
 		if ( empty( $filtered ) ) {
@@ -41,8 +37,8 @@ class WCD_Matches {
 		ob_start();
 		?>
 		<div class="wcd-match-list" data-wcd-match-list data-wcd-limit="<?php echo esc_attr( $limit ); ?>">
-			<?php foreach ( $filtered as $match ) : ?>
-				<?php echo $this->render_card( $match, $tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php foreach ( $filtered as $index => $match ) : ?>
+				<?php echo $this->render_card( $match, $tab, $limit > 0 && $index >= $limit ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endforeach; ?>
 		</div>
 		<p class="wcd-empty wcd-empty-filtered" data-wcd-filter-empty hidden><?php echo esc_html( wcd_get_text( 'no_team_matches' ) ); ?></p>
@@ -65,14 +61,270 @@ class WCD_Matches {
 					continue;
 				}
 
-				$name           = (string) $match[ $side ]['name'];
-				$teams[ $name ] = $name;
+				$team_data      = $match[ $side ];
+				$name           = (string) $team_data['name'];
+				$teams[ $name ] = array(
+					'name' => $name,
+					'flag' => $this->get_team_flag( $team_data ),
+				);
 			}
 		}
 
-		natcasesort( $teams );
+		uasort(
+			$teams,
+			function ( $first, $second ) {
+				return strnatcasecmp( $first['name'], $second['name'] );
+			}
+		);
 
 		return array_values( $teams );
+	}
+
+	/**
+	 * Returns a flag emoji for a team when its country can be identified.
+	 *
+	 * @param array $team Team data.
+	 * @return string
+	 */
+	private function get_team_flag( $team ) {
+		$code = $this->get_team_country_code( $team );
+
+		if ( '' === $code ) {
+			return '';
+		}
+
+		$flag = '';
+		$code = strtoupper( $code );
+
+		for ( $index = 0; $index < 2; $index++ ) {
+			$flag .= '&#x' . dechex( 0x1F1E6 + ord( $code[ $index ] ) - ord( 'A' ) ) . ';';
+		}
+
+		return html_entity_decode( $flag, ENT_NOQUOTES, 'UTF-8' );
+	}
+
+	/**
+	 * Maps football-data team names and TLA codes to ISO 3166-1 alpha-2 country codes.
+	 *
+	 * @param array $team Team data.
+	 * @return string
+	 */
+	private function get_team_country_code( $team ) {
+		$name = $this->normalize_country_key( $team['name'] ?? '' );
+		$tla  = strtoupper( (string) ( $team['tla'] ?? '' ) );
+
+		$name_map = array(
+			'albania' => 'AL',
+			'algeria' => 'DZ',
+			'argentina' => 'AR',
+			'armenia' => 'AM',
+			'australia' => 'AU',
+			'austria' => 'AT',
+			'azerbaijan' => 'AZ',
+			'bahrain' => 'BH',
+			'belgium' => 'BE',
+			'bolivia' => 'BO',
+			'bosnia and herzegovina' => 'BA',
+			'brazil' => 'BR',
+			'bulgaria' => 'BG',
+			'cameroon' => 'CM',
+			'canada' => 'CA',
+			'cape verde' => 'CV',
+			'chile' => 'CL',
+			'china pr' => 'CN',
+			'china' => 'CN',
+			'colombia' => 'CO',
+			'congo dr' => 'CD',
+			'dr congo' => 'CD',
+			'cote d ivoire' => 'CI',
+			'ivory coast' => 'CI',
+			'costa rica' => 'CR',
+			'croatia' => 'HR',
+			'curacao' => 'CW',
+			'czechia' => 'CZ',
+			'czech republic' => 'CZ',
+			'denmark' => 'DK',
+			'dominican republic' => 'DO',
+			'ecuador' => 'EC',
+			'egypt' => 'EG',
+			'el salvador' => 'SV',
+			'england' => 'GB',
+			'france' => 'FR',
+			'georgia' => 'GE',
+			'germany' => 'DE',
+			'ghana' => 'GH',
+			'greece' => 'GR',
+			'guatemala' => 'GT',
+			'haiti' => 'HT',
+			'honduras' => 'HN',
+			'hungary' => 'HU',
+			'iceland' => 'IS',
+			'indonesia' => 'ID',
+			'iran' => 'IR',
+			'islamic republic of iran' => 'IR',
+			'iraq' => 'IQ',
+			'israel' => 'IL',
+			'italy' => 'IT',
+			'jamaica' => 'JM',
+			'japan' => 'JP',
+			'jordan' => 'JO',
+			'kazakhstan' => 'KZ',
+			'korea republic' => 'KR',
+			'south korea' => 'KR',
+			'kuwait' => 'KW',
+			'mali' => 'ML',
+			'mexico' => 'MX',
+			'morocco' => 'MA',
+			'netherlands' => 'NL',
+			'new zealand' => 'NZ',
+			'north macedonia' => 'MK',
+			'nigeria' => 'NG',
+			'northern ireland' => 'GB',
+			'norway' => 'NO',
+			'oman' => 'OM',
+			'panama' => 'PA',
+			'paraguay' => 'PY',
+			'peru' => 'PE',
+			'poland' => 'PL',
+			'portugal' => 'PT',
+			'qatar' => 'QA',
+			'republic of ireland' => 'IE',
+			'romania' => 'RO',
+			'russia' => 'RU',
+			'saudi arabia' => 'SA',
+			'scotland' => 'GB',
+			'senegal' => 'SN',
+			'serbia' => 'RS',
+			'slovakia' => 'SK',
+			'slovenia' => 'SI',
+			'south africa' => 'ZA',
+			'spain' => 'ES',
+			'sweden' => 'SE',
+			'switzerland' => 'CH',
+			'tunisia' => 'TN',
+			'turkiye' => 'TR',
+			'turkey' => 'TR',
+			'ukraine' => 'UA',
+			'united arab emirates' => 'AE',
+			'united states' => 'US',
+			'usa' => 'US',
+			'uruguay' => 'UY',
+			'uzbekistan' => 'UZ',
+			'venezuela' => 'VE',
+			'wales' => 'GB',
+		);
+
+		$tla_map = array(
+			'ALB' => 'AL',
+			'ALG' => 'DZ',
+			'ARG' => 'AR',
+			'ARM' => 'AM',
+			'AUS' => 'AU',
+			'AUT' => 'AT',
+			'AZE' => 'AZ',
+			'BHR' => 'BH',
+			'BEL' => 'BE',
+			'BOL' => 'BO',
+			'BIH' => 'BA',
+			'BRA' => 'BR',
+			'BUL' => 'BG',
+			'CMR' => 'CM',
+			'CAN' => 'CA',
+			'CPV' => 'CV',
+			'CHI' => 'CL',
+			'CHN' => 'CN',
+			'COL' => 'CO',
+			'COD' => 'CD',
+			'CIV' => 'CI',
+			'CRC' => 'CR',
+			'CRO' => 'HR',
+			'CUW' => 'CW',
+			'CZE' => 'CZ',
+			'DEN' => 'DK',
+			'DOM' => 'DO',
+			'ECU' => 'EC',
+			'EGY' => 'EG',
+			'SLV' => 'SV',
+			'ENG' => 'GB',
+			'FRA' => 'FR',
+			'GEO' => 'GE',
+			'GER' => 'DE',
+			'GHA' => 'GH',
+			'GRE' => 'GR',
+			'GUA' => 'GT',
+			'HAI' => 'HT',
+			'HON' => 'HN',
+			'HUN' => 'HU',
+			'ISL' => 'IS',
+			'IDN' => 'ID',
+			'IRN' => 'IR',
+			'IRQ' => 'IQ',
+			'ISR' => 'IL',
+			'ITA' => 'IT',
+			'JAM' => 'JM',
+			'JPN' => 'JP',
+			'JOR' => 'JO',
+			'KAZ' => 'KZ',
+			'KOR' => 'KR',
+			'KUW' => 'KW',
+			'MLI' => 'ML',
+			'MEX' => 'MX',
+			'MAR' => 'MA',
+			'NED' => 'NL',
+			'NZL' => 'NZ',
+			'MKD' => 'MK',
+			'NGA' => 'NG',
+			'NIR' => 'GB',
+			'NOR' => 'NO',
+			'OMA' => 'OM',
+			'PAN' => 'PA',
+			'PAR' => 'PY',
+			'PER' => 'PE',
+			'POL' => 'PL',
+			'POR' => 'PT',
+			'QAT' => 'QA',
+			'IRL' => 'IE',
+			'ROU' => 'RO',
+			'RUS' => 'RU',
+			'KSA' => 'SA',
+			'SCO' => 'GB',
+			'SEN' => 'SN',
+			'SRB' => 'RS',
+			'SVK' => 'SK',
+			'SVN' => 'SI',
+			'RSA' => 'ZA',
+			'ESP' => 'ES',
+			'SWE' => 'SE',
+			'SUI' => 'CH',
+			'TUN' => 'TN',
+			'TUR' => 'TR',
+			'UKR' => 'UA',
+			'UAE' => 'AE',
+			'USA' => 'US',
+			'URU' => 'UY',
+			'UZB' => 'UZ',
+			'VEN' => 'VE',
+			'WAL' => 'GB',
+		);
+
+		if ( isset( $name_map[ $name ] ) ) {
+			return $name_map[ $name ];
+		}
+
+		return $tla_map[ $tla ] ?? '';
+	}
+
+	/**
+	 * Normalizes country names for map lookups.
+	 *
+	 * @param string $name Country name.
+	 * @return string
+	 */
+	private function normalize_country_key( $name ) {
+		$name = strtolower( remove_accents( (string) $name ) );
+		$name = preg_replace( '/[^a-z0-9]+/', ' ', $name );
+
+		return trim( (string) $name );
 	}
 
 	/**
@@ -246,7 +498,7 @@ class WCD_Matches {
 		$date_parts  = $this->format_match_datetime( $match );
 		$score       = $this->format_score( $match );
 		$is_finished = 'FINISHED' === $status;
-		$team_filter = strtolower( $home_team . '|' . $away_team );
+		$team_filter = $home_team . '|' . $away_team;
 
 		ob_start();
 		?>

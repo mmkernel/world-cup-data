@@ -52,6 +52,12 @@
 		var selected = normalize(team);
 		var panels = root.querySelectorAll('[data-wcd-panel]');
 
+		function cardMatchesTeam(card, shouldFilter) {
+			var teams = normalize(card.getAttribute('data-teams')).split('|');
+
+			return !shouldFilter || !selected || teams.indexOf(selected) !== -1;
+		}
+
 		if (!panels.length) {
 			var activeTab = root.getAttribute('data-active-tab') || 'upcoming';
 			var directCards = root.querySelectorAll('[data-wcd-match-card]');
@@ -62,8 +68,7 @@
 			var directShown = 0;
 
 			directCards.forEach(function (card) {
-				var teams = normalize(card.getAttribute('data-teams'));
-				var matchesTeam = !shouldFilterDirect || !selected || teams.indexOf(selected) !== -1;
+				var matchesTeam = cardMatchesTeam(card, shouldFilterDirect);
 				var withinLimit = selected || !directLimit || directShown < directLimit;
 				var visible = matchesTeam && withinLimit;
 				card.hidden = !visible;
@@ -97,8 +102,7 @@
 			var shown = 0;
 
 			cards.forEach(function (card) {
-				var teams = normalize(card.getAttribute('data-teams'));
-				var matchesTeam = !shouldFilter || !selected || teams.indexOf(selected) !== -1;
+				var matchesTeam = cardMatchesTeam(card, shouldFilter);
 				var withinLimit = selected || !limit || shown < limit;
 				var visible = matchesTeam && withinLimit;
 				card.hidden = !visible;

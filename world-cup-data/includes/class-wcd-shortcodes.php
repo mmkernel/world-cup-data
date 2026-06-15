@@ -510,6 +510,7 @@ class WCD_Shortcodes {
 		$all_matches = $matches_data['matches'] ?? array();
 		$this->render_stats['matches_loaded'] = is_array( $all_matches ) ? count( $all_matches ) : 0;
 		$teams       = $matches->get_teams( $all_matches );
+		$team_names  = wp_list_pluck( $teams, 'name' );
 		$live_statuses = array( 'IN_PLAY', 'PAUSED', 'LIVE' );
 
 		if ( ! $matches->has_matches_with_status( $all_matches, $live_statuses ) ) {
@@ -524,7 +525,7 @@ class WCD_Shortcodes {
 			$selected_tab = reset( $visible_tabs );
 		}
 
-		if ( '' !== $selected_team && ! in_array( $selected_team, $teams, true ) ) {
+		if ( '' !== $selected_team && ! in_array( $selected_team, $team_names, true ) ) {
 			$selected_team = '';
 		}
 
