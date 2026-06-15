@@ -71,6 +71,11 @@ class WCD_API {
 	public function refresh_data( $force = false ) {
 		unset( $force );
 
+		if ( ! $this->can_refresh_data() ) {
+			wcd_debug_log( 'Blocked refresh_data() outside allowed cron/admin refresh context. current_filter=' . current_filter() );
+			return false;
+		}
+
 		if ( get_transient( self::FETCH_LOCK_TRANSIENT ) ) {
 			return false;
 		}
@@ -252,6 +257,19 @@ class WCD_API {
 	}
 
 	/**
+	 * Returns whether remote refreshes are allowed in the current request.
+	 *
+	 * @return bool
+	 */
+	private function can_refresh_data() {
+		if ( wp_doing_cron() && self::CRON_HOOK === current_filter() ) {
+			return true;
+		}
+
+		return is_admin() && 'admin_post_wcd_refresh_data' === current_filter();
+	}
+
+	/**
 	 * Performs an authenticated API request.
 	 *
 	 * @param string $endpoint API endpoint path.
@@ -259,6 +277,9 @@ class WCD_API {
 	 * @return array|WP_Error
 	 */
 	private function request( $endpoint, $data_key = '' ) {
+		$started = microtime( true );
+		wcd_debug_log( 'External request start: wp_remote_get ' . WCD_API_BASE_URL . $endpoint . ' current_filter=' . current_filter() );
+
 		$token = trim( (string) get_option( 'wcd_api_token', '' ) );
 
 		if ( '' === $token ) {
@@ -277,6 +298,8 @@ class WCD_API {
 				),
 			)
 		);
+
+		wcd_debug_log( sprintf( 'External request end: wp_remote_get %s duration=%.4fs', WCD_API_BASE_URL . $endpoint, microtime( true ) - $started ) );
 
 		if ( is_wp_error( $response ) ) {
 			return new WP_Error(

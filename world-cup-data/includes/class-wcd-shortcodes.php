@@ -38,7 +38,7 @@ function wcd_render_team_flag( $team ) {
 	$name = $team['name'] ?? wcd_get_text( 'team' );
 
 	return sprintf(
-		'<img class="wcd-team-flag" src="%s" alt="%s" loading="lazy" decoding="async" />',
+		'<img class="wcd-team-flag" src="%s" alt="%s" width="24" height="24" loading="lazy" decoding="async" />',
 		esc_url( $team['crest'] ),
 		esc_attr(
 			sprintf(
@@ -342,6 +342,16 @@ class WCD_Shortcodes {
 	private $api;
 
 	/**
+	 * Most recent render stats for debug logging.
+	 *
+	 * @var array
+	 */
+	private $render_stats = array(
+		'matches_loaded'   => 0,
+		'matches_rendered' => 0,
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @param WCD_API $api API client.
@@ -389,18 +399,33 @@ class WCD_Shortcodes {
 	 * @return string
 	 */
 	public function render_worldcup_shortcode( $atts = array() ) {
-		wp_enqueue_style( 'wcd-world-cup-data' );
-		wp_enqueue_script( 'wcd-world-cup-data' );
+		$started = microtime( true );
+		$this->reset_render_stats();
+		wcd_debug_log( 'WCD shortcode render start: [worldcup]' );
 
-		$atts = $this->normalize_worldcup_atts( $atts );
+		try {
+			wp_enqueue_style( 'wcd-world-cup-data' );
+			wp_enqueue_script( 'wcd-world-cup-data' );
 
-		if ( 'yes' === $atts['lazy'] ) {
-			$this->localize_lazy_assets();
+			$atts = $this->normalize_worldcup_atts( $atts );
 
-			return $this->render_lazy_placeholder( $atts );
+			if ( 'yes' === $atts['lazy'] ) {
+				$this->localize_lazy_assets();
+
+				return $this->render_lazy_placeholder( $atts );
+			}
+
+			return $this->render_worldcup_markup( $atts );
+		} finally {
+			wcd_debug_log(
+				sprintf(
+					'WCD shortcode render end: [worldcup] duration=%.4fs matches_loaded=%d matches_rendered=%d',
+					microtime( true ) - $started,
+					$this->render_stats['matches_loaded'],
+					$this->render_stats['matches_rendered']
+				)
+			);
 		}
-
-		return $this->render_worldcup_markup( $atts );
 	}
 
 	/**
@@ -415,7 +440,6 @@ class WCD_Shortcodes {
 
 		$atts          = $this->normalize_worldcup_atts( $raw_atts );
 		$atts['lazy']  = 'no';
-		$atts['limit'] = 10;
 
 		wp_send_json_success(
 			array(
@@ -484,6 +508,7 @@ class WCD_Shortcodes {
 		unset( $matches_data['__wcd_cache_status'] );
 
 		$all_matches = $matches_data['matches'] ?? array();
+		$this->render_stats['matches_loaded'] = is_array( $all_matches ) ? count( $all_matches ) : 0;
 		$teams       = $matches->get_teams( $all_matches );
 		$live_statuses = array( 'IN_PLAY', 'PAUSED', 'LIVE' );
 
@@ -507,15 +532,21 @@ class WCD_Shortcodes {
 
 		foreach ( $visible_tabs as $tab ) {
 			if ( 'upcoming' === $tab ) {
-				$panels['upcoming'] = $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED', 'TIMED' ), $limit );
+				$rendered           = 0;
+				$panels['upcoming'] = $matches->render_tab_matches( $all_matches, 'upcoming', array( 'SCHEDULED', 'TIMED' ), $limit, $rendered );
+				$this->render_stats['matches_rendered'] += $rendered;
 			}
 
 			if ( 'live' === $tab ) {
-				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', $live_statuses, $limit );
+				$rendered       = 0;
+				$panels['live'] = $matches->render_tab_matches( $all_matches, 'live', $live_statuses, $limit, $rendered );
+				$this->render_stats['matches_rendered'] += $rendered;
 			}
 
 			if ( 'results' === $tab ) {
-				$panels['results'] = $matches->render_tab_matches( $all_matches, 'results', array( 'FINISHED' ), $limit );
+				$rendered          = 0;
+				$panels['results'] = $matches->render_tab_matches( $all_matches, 'results', array( 'FINISHED' ), $limit, $rendered );
+				$this->render_stats['matches_rendered'] += $rendered;
 			}
 
 			if ( 'tables' === $tab ) {
@@ -568,6 +599,16 @@ class WCD_Shortcodes {
 	}
 
 	/**
+	 * Resets debug render counters.
+	 */
+	private function reset_render_stats() {
+		$this->render_stats = array(
+			'matches_loaded'   => 0,
+			'matches_rendered' => 0,
+		);
+	}
+
+	/**
 	 * Renders the lightweight lazy shortcode placeholder.
 	 *
 	 * @param array $atts Normalized shortcode attributes.
@@ -578,6 +619,7 @@ class WCD_Shortcodes {
 			array(
 				'default_tab'  => $atts['default_tab'],
 				'display_only' => $atts['display_only'],
+				'limit'        => $atts['limit'],
 			)
 		);
 

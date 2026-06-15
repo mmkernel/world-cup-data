@@ -21,11 +21,18 @@ class WCD_Matches {
 	 * @param string $tab      Tab key.
 	 * @param array  $statuses Allowed statuses.
 	 * @param int    $limit    Maximum cards to show. Zero means no limit.
+	 * @param int    $rendered Number of match cards rendered.
 	 * @return string
 	 */
-	public function render_tab_matches( $matches, $tab, $statuses, $limit = 0 ) {
+	public function render_tab_matches( $matches, $tab, $statuses, $limit = 0, &$rendered = 0 ) {
 		$filtered = $this->sort_matches( $this->filter_by_status( $matches, $statuses ), $tab );
 		$limit    = absint( $limit );
+
+		if ( $limit > 0 ) {
+			$filtered = array_slice( $filtered, 0, $limit );
+		}
+
+		$rendered = count( $filtered );
 
 		if ( empty( $filtered ) ) {
 			return '<p class="wcd-empty" data-wcd-empty>' . esc_html( wcd_get_text( 'no_matches' ) ) . '</p>';
@@ -34,8 +41,8 @@ class WCD_Matches {
 		ob_start();
 		?>
 		<div class="wcd-match-list" data-wcd-match-list data-wcd-limit="<?php echo esc_attr( $limit ); ?>">
-			<?php foreach ( $filtered as $index => $match ) : ?>
-				<?php echo $this->render_card( $match, $tab, $limit > 0 && $index >= $limit ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php foreach ( $filtered as $match ) : ?>
+				<?php echo $this->render_card( $match, $tab ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			<?php endforeach; ?>
 		</div>
 		<p class="wcd-empty wcd-empty-filtered" data-wcd-filter-empty hidden><?php echo esc_html( wcd_get_text( 'no_team_matches' ) ); ?></p>

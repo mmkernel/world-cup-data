@@ -22,6 +22,17 @@ define( 'WCD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WCD_API_BASE_URL', 'https://api.football-data.org/v4' );
 define( 'WCD_COMPETITION_CODE', 'WC' );
 
+/**
+ * Writes temporary plugin debug messages when WordPress debugging is enabled.
+ *
+ * @param string $message Debug message.
+ */
+function wcd_debug_log( $message ) {
+	if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		error_log( '[WCD] ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+}
+
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-api.php';
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-admin.php';
 require_once WCD_PLUGIN_DIR . 'includes/class-wcd-matches.php';
